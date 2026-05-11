@@ -1,3 +1,10 @@
+import type {
+  ProjectStatus,
+  ProjectType,
+  QaMaturity,
+  RiskLevel,
+} from "@/lib/projects/types";
+
 export const defaultLocale = "pt-BR" as const;
 
 export const supportedLocales = [
@@ -40,6 +47,49 @@ type WorkspaceModule = {
   status: string;
 };
 
+type ProjectCopy = {
+  eyebrow: string;
+  title: string;
+  description: string;
+  persistenceNote: string;
+  createTitle: string;
+  editTitle: string;
+  emptyTitle: string;
+  emptyDescription: string;
+  fields: {
+    name: string;
+    type: string;
+    description: string;
+    targetUrl: string;
+    qaMaturity: string;
+    riskLevel: string;
+    status: string;
+  };
+  placeholders: {
+    name: string;
+    description: string;
+    targetUrl: string;
+  };
+  actions: {
+    create: string;
+    update: string;
+    cancel: string;
+    edit: string;
+    delete: string;
+  };
+  summaryLabel: string;
+  targetUrlLabel: string;
+  noTargetUrl: string;
+  deleteConfirm: string;
+  validationError: string;
+  options: {
+    types: Record<ProjectType, string>;
+    qaMaturity: Record<QaMaturity, string>;
+    riskLevel: Record<RiskLevel, string>;
+    status: Record<ProjectStatus, string>;
+  };
+};
+
 type Translation = {
   languageSelector: {
     label: string;
@@ -48,6 +98,18 @@ type Translation = {
   productRule: {
     title: string;
     description: string;
+  };
+  auth: {
+    demoLabel: string;
+    mode: string;
+    signedInAs: string;
+    localOnly: string;
+  };
+  workspace: {
+    activeWorkspace: string;
+    plan: string;
+    credits: string;
+    role: string;
   };
   navigationItems: NavigationItem[];
   controlTowerBadge: string;
@@ -58,6 +120,7 @@ type Translation = {
   };
   qualitySignals: QualitySignal[];
   pillarCards: PillarCard[];
+  projects: ProjectCopy;
   applicationSections: {
     eyebrow: string;
     title: string;
@@ -86,9 +149,21 @@ export const translations: Record<Locale, Translation> = {
       description:
         "A IA fica ligada a artefatos estruturados de QA, nunca apresentada como chatbot solto.",
     },
+    auth: {
+      demoLabel: "Autenticação demo",
+      mode: "Sessão local assinada para o skeleton MVP",
+      signedInAs: "Conectado como",
+      localOnly: "Sem login real, senha, OAuth, cookies ou provedor externo neste bloco.",
+    },
+    workspace: {
+      activeWorkspace: "Workspace ativo",
+      plan: "Plano",
+      credits: "Créditos placeholder",
+      role: "Papel",
+    },
     navigationItems: [
       { label: "Torre de Controle", href: "#control-tower", status: "Shell ativo" },
-      { label: "Projetos", href: "#projects", status: "Placeholder" },
+      { label: "Projetos", href: "#projects", status: "Operacional" },
       { label: "QA Workspace", href: "#workspace", status: "Placeholder" },
       { label: "Check-up", href: "#checkup", status: "Pronto para créditos" },
       { label: "Relatórios", href: "#reports", status: "Placeholder" },
@@ -100,12 +175,12 @@ export const translations: Record<Locale, Translation> = {
       eyebrow: "Fundação do sistema operacional de qualidade",
       title: "Um workspace para transformar incerteza de produto em artefatos de QA.",
       description:
-        "FrankInTest começa com uma Torre de Controle profissional para Check-ups seguros assistidos por IA, operações de QA Workspace, relatórios prontos para evidências e alinhamento com FrankInDrift.",
+        "FrankInTest agora tem uma fronteira local de autenticação, workspace pessoal e projetos para organizar o escopo de qualidade antes de qualquer IA, cobrança, integração ou banco real.",
     },
     qualitySignals: [
       {
-        label: "Rascunhos de artefatos estruturados",
-        value: "12",
+        label: "Projetos no workspace pessoal",
+        value: "2+",
         tone: "from-teal-500 to-emerald-400",
       },
       {
@@ -129,7 +204,7 @@ export const translations: Record<Locale, Translation> = {
         title: "FrankInTest Check-up assistido por IA",
         eyebrow: "Entrada baseada em créditos",
         description:
-          "Fluxo de Check-up seguro para landing pages, MVPs, fluxos SaaS, APIs, fluxos mobile e descrições de produto. As saídas são tratadas como riscos potenciais e rascunhos de artefatos de QA.",
+          "Fluxo de Check-up seguro para landing pages, MVPs, fluxos SaaS, APIs, fluxos mobile e descrições de produto. As saídas serão riscos potenciais e rascunhos de artefatos de QA.",
         artifacts: ["Item de risco", "Cenário de teste", "Resumo de evidência"],
       },
       {
@@ -147,26 +222,87 @@ export const translations: Record<Locale, Translation> = {
         artifacts: ["Achado de drift", "Item de risco", "Validação recomendada"],
       },
     ],
+    projects: {
+      eyebrow: "Projetos",
+      title: "Primeiro módulo operacional do workspace.",
+      description:
+        "Crie, edite e remova projetos locais para definir produto, URL alvo, maturidade de QA e nível de risco antes dos próximos artefatos.",
+      persistenceNote:
+        "Persistência local simples via localStorage. Não há banco real, sincronização, billing ou dedução de créditos.",
+      createTitle: "Novo projeto",
+      editTitle: "Editar projeto",
+      emptyTitle: "Nenhum projeto local ainda",
+      emptyDescription: "Crie o primeiro projeto para começar a organizar o escopo de QA.",
+      fields: {
+        name: "Nome",
+        type: "Tipo",
+        description: "Descrição",
+        targetUrl: "URL alvo",
+        qaMaturity: "Maturidade de QA",
+        riskLevel: "Risco",
+        status: "Status",
+      },
+      placeholders: {
+        name: "Ex.: Portal do cliente",
+        description: "Contexto, fluxos críticos e objetivo de qualidade.",
+        targetUrl: "https://...",
+      },
+      actions: {
+        create: "Criar projeto",
+        update: "Salvar alterações",
+        cancel: "Cancelar edição",
+        edit: "Editar",
+        delete: "Remover",
+      },
+      summaryLabel: "Resumo rápido",
+      targetUrlLabel: "Alvo",
+      noTargetUrl: "Sem URL alvo definida",
+      deleteConfirm: "Remover este projeto local? Esta ação precisa de confirmação.",
+      validationError: "Informe um nome válido e selecione valores suportados para o projeto.",
+      options: {
+        types: {
+          landing_page: "Landing page",
+          saas: "SaaS",
+          mobile_app: "App mobile",
+          api: "API",
+          erp: "ERP",
+          ecommerce: "E-commerce",
+          internal_system: "Sistema interno",
+          other: "Outro",
+        },
+        qaMaturity: {
+          unknown: "Desconhecida",
+          ad_hoc: "Ad hoc",
+          basic: "Básica",
+          structured: "Estruturada",
+          advanced: "Avançada",
+        },
+        riskLevel: {
+          low: "Baixo",
+          medium: "Médio",
+          high: "Alto",
+          critical: "Crítico",
+        },
+        status: {
+          active: "Ativo",
+          paused: "Pausado",
+          archived: "Arquivado",
+        },
+      },
+    },
     applicationSections: {
       eyebrow: "Seções da aplicação",
       title: "Skeleton navegável para o primeiro shell SaaS.",
       description:
-        "Estas seções são placeholders com escopo específico de produto, não páginas vazias genéricas.",
+        "Estas seções têm escopo específico de produto e preservam a Torre de Controle como entrada principal.",
     },
     workspaceModules: [
-      {
-        id: "projects",
-        name: "Projetos",
-        summary:
-          "Organize produtos, módulos, contexto, nível de risco e o escopo de qualidade de cada workspace.",
-        status: "CRUD de projetos vem em um bloco futuro",
-      },
       {
         id: "workspace",
         name: "QA Workspace",
         summary:
           "Mapeie requisitos, regras, cenários, casos de teste, ciclos, bugs, evidências e recomendações de automação.",
-        status: "Telas de artefatos são placeholders",
+        status: "Artefatos chegam no Bloco 03+",
       },
       {
         id: "checkup",
@@ -220,7 +356,7 @@ export const translations: Record<Locale, Translation> = {
       items: [
         "Saídas assistidas por IA exigem confirmação antes de serem tratadas como verdade.",
         "A linguagem de segurança permanece limitada a orientação segura de Check-up nesta fundação.",
-        "Nenhuma ação destrutiva, varredura invasiva, integração real ou execução externa roda no Bloco 01.",
+        "Nenhuma ação destrutiva, varredura invasiva, integração real ou execução externa roda no Bloco 02.",
         "Futuras análises de IA de alto custo devem estimar créditos antes da execução.",
       ],
     },
@@ -235,9 +371,21 @@ export const translations: Record<Locale, Translation> = {
       description:
         "AI is attached to structured QA artifacts, never presented as a loose chatbot.",
     },
+    auth: {
+      demoLabel: "Demo authentication",
+      mode: "Local signed-in session for the MVP skeleton",
+      signedInAs: "Signed in as",
+      localOnly: "No real login, passwords, OAuth, cookies, or external provider in this block.",
+    },
+    workspace: {
+      activeWorkspace: "Active workspace",
+      plan: "Plan",
+      credits: "Credit placeholder",
+      role: "Role",
+    },
     navigationItems: [
       { label: "Control Tower", href: "#control-tower", status: "Live shell" },
-      { label: "Projects", href: "#projects", status: "Placeholder" },
+      { label: "Projects", href: "#projects", status: "Operational" },
       { label: "QA Workspace", href: "#workspace", status: "Placeholder" },
       { label: "Check-up", href: "#checkup", status: "Credit-ready" },
       { label: "Reports", href: "#reports", status: "Placeholder" },
@@ -249,12 +397,12 @@ export const translations: Record<Locale, Translation> = {
       eyebrow: "Quality operating system foundation",
       title: "One workspace to turn product uncertainty into QA artifacts.",
       description:
-        "FrankInTest starts with a professional Control Tower for safe AI-assisted check-ups, QA workspace operations, evidence-ready reports, and FrankInDrift alignment work.",
+        "FrankInTest now has a local auth boundary, personal workspace, and projects for organizing quality scope before any real AI, billing, integration, or database work.",
     },
     qualitySignals: [
       {
-        label: "Structured artifact drafts",
-        value: "12",
+        label: "Projects in the personal workspace",
+        value: "2+",
         tone: "from-teal-500 to-emerald-400",
       },
       {
@@ -278,7 +426,7 @@ export const translations: Record<Locale, Translation> = {
         title: "AI-assisted FrankInTest Check-up",
         eyebrow: "Credit-based entry point",
         description:
-          "Safe Check-up flow for landing pages, MVPs, SaaS flows, APIs, mobile flows, and product descriptions. Outputs are framed as potential risks and draft QA artifacts.",
+          "Safe Check-up flow for landing pages, MVPs, SaaS flows, APIs, mobile flows, and product descriptions. Outputs will be framed as potential risks and draft QA artifacts.",
         artifacts: ["Risk item", "Test scenario", "Evidence summary"],
       },
       {
@@ -296,26 +444,87 @@ export const translations: Record<Locale, Translation> = {
         artifacts: ["Drift finding", "Risk item", "Recommended validation"],
       },
     ],
+    projects: {
+      eyebrow: "Projects",
+      title: "The first operational workspace module.",
+      description:
+        "Create, edit, and remove local projects to define product, target URL, QA maturity, and risk level before the next artifacts.",
+      persistenceNote:
+        "Simple local persistence through localStorage. There is no real database, sync, billing, or credit deduction.",
+      createTitle: "New project",
+      editTitle: "Edit project",
+      emptyTitle: "No local projects yet",
+      emptyDescription: "Create the first project to start organizing QA scope.",
+      fields: {
+        name: "Name",
+        type: "Type",
+        description: "Description",
+        targetUrl: "Target URL",
+        qaMaturity: "QA maturity",
+        riskLevel: "Risk",
+        status: "Status",
+      },
+      placeholders: {
+        name: "Example: Customer portal",
+        description: "Context, critical flows, and quality objective.",
+        targetUrl: "https://...",
+      },
+      actions: {
+        create: "Create project",
+        update: "Save changes",
+        cancel: "Cancel edit",
+        edit: "Edit",
+        delete: "Remove",
+      },
+      summaryLabel: "Quick summary",
+      targetUrlLabel: "Target",
+      noTargetUrl: "No target URL defined",
+      deleteConfirm: "Remove this local project? This action requires confirmation.",
+      validationError: "Enter a valid name and select supported project values.",
+      options: {
+        types: {
+          landing_page: "Landing page",
+          saas: "SaaS",
+          mobile_app: "Mobile app",
+          api: "API",
+          erp: "ERP",
+          ecommerce: "E-commerce",
+          internal_system: "Internal system",
+          other: "Other",
+        },
+        qaMaturity: {
+          unknown: "Unknown",
+          ad_hoc: "Ad hoc",
+          basic: "Basic",
+          structured: "Structured",
+          advanced: "Advanced",
+        },
+        riskLevel: {
+          low: "Low",
+          medium: "Medium",
+          high: "High",
+          critical: "Critical",
+        },
+        status: {
+          active: "Active",
+          paused: "Paused",
+          archived: "Archived",
+        },
+      },
+    },
     applicationSections: {
       eyebrow: "Application sections",
       title: "Navigable skeleton for the first SaaS shell.",
       description:
-        "These sections are placeholders with product-specific scope, not generic empty pages.",
+        "These sections have product-specific scope and preserve the Control Tower as the main entry point.",
     },
     workspaceModules: [
-      {
-        id: "projects",
-        name: "Projects",
-        summary:
-          "Organize products, modules, context, risk level, and the quality scope for each workspace.",
-        status: "Project CRUD comes in a later block",
-      },
       {
         id: "workspace",
         name: "QA Workspace",
         summary:
           "Map requirements, rules, scenarios, test cases, cycles, bugs, evidence, and automation recommendations.",
-        status: "Artifact screens are placeholders",
+        status: "Artifacts arrive in Block 03+",
       },
       {
         id: "checkup",
@@ -369,7 +578,7 @@ export const translations: Record<Locale, Translation> = {
       items: [
         "AI-assisted outputs require confirmation before being treated as truth.",
         "Security language stays scoped to safe Check-up guidance in this foundation.",
-        "No destructive actions, invasive scans, real integrations, or external execution run in Block 01.",
+        "No destructive actions, invasive scans, real integrations, or external execution run in Block 02.",
         "Future high-cost AI analysis must estimate credits before execution.",
       ],
     },
@@ -384,9 +593,21 @@ export const translations: Record<Locale, Translation> = {
       description:
         "La IA se conecta a artefactos estructurados de QA, nunca se presenta como un chatbot suelto.",
     },
+    auth: {
+      demoLabel: "Autenticación demo",
+      mode: "Sesión local iniciada para el skeleton MVP",
+      signedInAs: "Conectado como",
+      localOnly: "Sin login real, contraseñas, OAuth, cookies ni proveedor externo en este bloque.",
+    },
+    workspace: {
+      activeWorkspace: "Workspace activo",
+      plan: "Plan",
+      credits: "Créditos placeholder",
+      role: "Rol",
+    },
     navigationItems: [
       { label: "Torre de Control", href: "#control-tower", status: "Shell activo" },
-      { label: "Proyectos", href: "#projects", status: "Placeholder" },
+      { label: "Proyectos", href: "#projects", status: "Operacional" },
       { label: "QA Workspace", href: "#workspace", status: "Placeholder" },
       { label: "Check-up", href: "#checkup", status: "Listo para créditos" },
       { label: "Reportes", href: "#reports", status: "Placeholder" },
@@ -398,12 +619,12 @@ export const translations: Record<Locale, Translation> = {
       eyebrow: "Fundación del sistema operativo de calidad",
       title: "Un workspace para transformar incertidumbre de producto en artefactos de QA.",
       description:
-        "FrankInTest empieza con una Torre de Control profesional para Check-ups seguros asistidos por IA, operaciones de QA Workspace, reportes listos para evidencias y alineación con FrankInDrift.",
+        "FrankInTest ahora tiene una frontera local de autenticación, workspace personal y proyectos para organizar el alcance de calidad antes de cualquier IA, cobro, integración o base real.",
     },
     qualitySignals: [
       {
-        label: "Borradores de artefactos estructurados",
-        value: "12",
+        label: "Proyectos en el workspace personal",
+        value: "2+",
         tone: "from-teal-500 to-emerald-400",
       },
       {
@@ -427,7 +648,7 @@ export const translations: Record<Locale, Translation> = {
         title: "FrankInTest Check-up asistido por IA",
         eyebrow: "Entrada basada en créditos",
         description:
-          "Flujo de Check-up seguro para landing pages, MVPs, flujos SaaS, APIs, flujos móviles y descripciones de producto. Las salidas se tratan como riesgos potenciales y borradores de artefactos de QA.",
+          "Flujo de Check-up seguro para landing pages, MVPs, flujos SaaS, APIs, flujos móviles y descripciones de producto. Las salidas serán riesgos potenciales y borradores de artefactos de QA.",
         artifacts: ["Ítem de riesgo", "Escenario de prueba", "Resumen de evidencia"],
       },
       {
@@ -445,26 +666,87 @@ export const translations: Record<Locale, Translation> = {
         artifacts: ["Hallazgo de drift", "Ítem de riesgo", "Validación recomendada"],
       },
     ],
+    projects: {
+      eyebrow: "Proyectos",
+      title: "El primer módulo operacional del workspace.",
+      description:
+        "Crea, edita y remueve proyectos locales para definir producto, URL objetivo, madurez de QA y nivel de riesgo antes de los próximos artefactos.",
+      persistenceNote:
+        "Persistencia local simple con localStorage. No hay base de datos real, sincronización, cobro ni deducción de créditos.",
+      createTitle: "Nuevo proyecto",
+      editTitle: "Editar proyecto",
+      emptyTitle: "Todavía no hay proyectos locales",
+      emptyDescription: "Crea el primer proyecto para empezar a organizar el alcance de QA.",
+      fields: {
+        name: "Nombre",
+        type: "Tipo",
+        description: "Descripción",
+        targetUrl: "URL objetivo",
+        qaMaturity: "Madurez de QA",
+        riskLevel: "Riesgo",
+        status: "Status",
+      },
+      placeholders: {
+        name: "Ej.: Portal del cliente",
+        description: "Contexto, flujos críticos y objetivo de calidad.",
+        targetUrl: "https://...",
+      },
+      actions: {
+        create: "Crear proyecto",
+        update: "Guardar cambios",
+        cancel: "Cancelar edición",
+        edit: "Editar",
+        delete: "Remover",
+      },
+      summaryLabel: "Resumen rápido",
+      targetUrlLabel: "Objetivo",
+      noTargetUrl: "Sin URL objetivo definida",
+      deleteConfirm: "¿Remover este proyecto local? Esta acción requiere confirmación.",
+      validationError: "Informa un nombre válido y selecciona valores soportados para el proyecto.",
+      options: {
+        types: {
+          landing_page: "Landing page",
+          saas: "SaaS",
+          mobile_app: "App mobile",
+          api: "API",
+          erp: "ERP",
+          ecommerce: "E-commerce",
+          internal_system: "Sistema interno",
+          other: "Otro",
+        },
+        qaMaturity: {
+          unknown: "Desconocida",
+          ad_hoc: "Ad hoc",
+          basic: "Básica",
+          structured: "Estructurada",
+          advanced: "Avanzada",
+        },
+        riskLevel: {
+          low: "Bajo",
+          medium: "Medio",
+          high: "Alto",
+          critical: "Crítico",
+        },
+        status: {
+          active: "Activo",
+          paused: "Pausado",
+          archived: "Archivado",
+        },
+      },
+    },
     applicationSections: {
       eyebrow: "Secciones de la aplicación",
       title: "Skeleton navegable para el primer shell SaaS.",
       description:
-        "Estas secciones son placeholders con alcance específico de producto, no páginas vacías genéricas.",
+        "Estas secciones tienen alcance específico de producto y preservan la Torre de Control como entrada principal.",
     },
     workspaceModules: [
-      {
-        id: "projects",
-        name: "Proyectos",
-        summary:
-          "Organiza productos, módulos, contexto, nivel de riesgo y el alcance de calidad de cada workspace.",
-        status: "CRUD de proyectos llega en un bloque posterior",
-      },
       {
         id: "workspace",
         name: "QA Workspace",
         summary:
           "Mapea requisitos, reglas, escenarios, casos de prueba, ciclos, bugs, evidencias y recomendaciones de automatización.",
-        status: "Las pantallas de artefactos son placeholders",
+        status: "Los artefactos llegan en el Bloque 03+",
       },
       {
         id: "checkup",
@@ -518,7 +800,7 @@ export const translations: Record<Locale, Translation> = {
       items: [
         "Las salidas asistidas por IA requieren confirmación antes de tratarse como verdad.",
         "El lenguaje de seguridad se mantiene limitado a orientación segura de Check-up en esta fundación.",
-        "No se ejecutan acciones destructivas, escaneos invasivos, integraciones reales ni ejecución externa en el Bloque 01.",
+        "No se ejecutan acciones destructivas, escaneos invasivos, integraciones reales ni ejecución externa en el Bloque 02.",
         "Los futuros análisis de IA de alto costo deben estimar créditos antes de la ejecución.",
       ],
     },
