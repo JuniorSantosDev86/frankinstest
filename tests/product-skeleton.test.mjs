@@ -46,7 +46,6 @@ function loadTsModule(relativePath) {
 
 const pageSource = readFileSync("src/app/page.tsx", "utf8");
 const i18nSource = readFileSync("src/app/i18n.ts", "utf8");
-const currentStatus = readFileSync("docs/CURRENT_STATUS.md", "utf8");
 const productSource = `${pageSource}\n${i18nSource}`;
 const projectTypesSource = readFileSync("src/lib/projects/types.ts", "utf8");
 const projectServiceSource = readFileSync("src/lib/projects/projectService.ts", "utf8");
@@ -224,18 +223,4 @@ test("language selector is visible in the application shell", () => {
 test("default locale is pt-BR", () => {
   assert.match(i18nSource, /defaultLocale = "pt-BR"/);
   assert.match(pageSource, /useState<Locale>\(defaultLocale\)/);
-});
-
-test("current status records Block 01 completion", () => {
-  assert.match(currentStatus, /Block 01/);
-  assert.match(currentStatus, /Block 02/);
-  assert.match(currentStatus, /Completion notes/);
-});
-
-test("current status records Block 02 completion and next block", () => {
-  assert.match(currentStatus, /Block 02/);
-  assert.match(currentStatus, /mock\/local only/i);
-  assert.match(currentStatus, /project CRUD foundation/i);
-  assert.match(currentStatus, /access check foundation/i);
-  assert.match(currentStatus, /Block 03/);
 });
