@@ -62,6 +62,7 @@ import {
 } from "@/lib/projects/types";
 import { getMembership } from "@/lib/workspace/access";
 import { TestScenarioSection } from "./components/TestScenarioSection";
+import { TestCaseSection } from "./components/TestCaseSection";
 import { defaultLocale, isSupportedLocale, supportedLocales, translations, type Locale } from "./i18n";
 
 const projectStorageKey = "frankintest.block02.projects";
@@ -1383,6 +1384,13 @@ export default function Home() {
           </section>
 
           <TestScenarioSection
+            projects={visibleProjects}
+            modules={modules}
+            requirements={requirements}
+            businessRules={businessRules}
+          />
+
+          <TestCaseSection
             projects={visibleProjects}
             modules={modules}
             requirements={requirements}

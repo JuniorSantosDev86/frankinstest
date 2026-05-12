@@ -50,7 +50,8 @@ const testScenarioSectionSource = readFileSync(
   "src/app/components/TestScenarioSection.tsx",
   "utf8",
 );
-const productSource = `${pageSource}\n${i18nSource}\n${testScenarioSectionSource}`;
+const testCaseSectionSource = readFileSync("src/app/components/TestCaseSection.tsx", "utf8");
+const productSource = `${pageSource}\n${i18nSource}\n${testScenarioSectionSource}\n${testCaseSectionSource}`;
 const projectTypesSource = readFileSync("src/lib/projects/types.ts", "utf8");
 const projectServiceSource = readFileSync("src/lib/projects/projectService.ts", "utf8");
 const businessTypesSource = readFileSync("src/lib/business-understanding/types.ts", "utf8");
@@ -75,6 +76,7 @@ test("FrankInTest shell exposes the required navigation sections", () => {
     "Projects",
     "QA Workspace",
     "Cenários de teste",
+    "Casos de teste",
     "Check-up",
     "Reports",
     "FrankInDrift",
@@ -874,6 +876,62 @@ test("test scenario UI preserves project module requirement rule traceability fl
   ].forEach((copy) => {
     assert.match(testScenarioSectionSource, new RegExp(copy));
   });
+});
+
+test("test case UI source exists and exposes the pt-BR section", () => {
+  assert.match(pageSource, /TestCaseSection/);
+  assert.match(testCaseSectionSource, /Casos de teste/);
+  assert.match(testCaseSectionSource, /Projeto em análise/);
+  assert.match(testCaseSectionSource, /Resumo de casos/);
+  assert.match(testCaseSectionSource, /Novo caso de teste/);
+  assert.match(testCaseSectionSource, /Editar caso de teste/);
+});
+
+test("test case UI uses local demo persistence and service helpers", () => {
+  assert.match(testCaseSectionSource, /frankintest\.block04\.testCases/);
+  assert.match(testCaseSectionSource, /frankintest\.block04\.scenarios/);
+  assert.match(testCaseSectionSource, /demoTestCases/);
+  assert.match(testCaseSectionSource, /demoTestScenarios/);
+  assert.match(testCaseSectionSource, /validateTestCaseInput/);
+  assert.match(testCaseSectionSource, /createTestCase/);
+  assert.match(testCaseSectionSource, /updateTestCase/);
+  assert.match(testCaseSectionSource, /getTestCaseDesignSummary/);
+  assert.match(testCaseSectionSource, /listTestCasesByProject/);
+});
+
+test("test case UI preserves full traceability labels", () => {
+  [
+    "Projeto -&gt; Módulo -&gt; Requisito -&gt; Regra de negócio -&gt; Cenário de teste -&gt; Caso de teste",
+    "Projeto",
+    "Módulo",
+    "Requisito",
+    "Regra de negócio",
+    "Cenário de teste",
+    "Caso de teste",
+    "Objetivo",
+    "Pré-condição",
+    "Resultado esperado",
+    "Prioridade",
+    "Status de automação",
+    "Rascunho assistido por IA",
+    "Revisado por",
+  ].forEach((copy) => {
+    assert.match(testCaseSectionSource, new RegExp(copy));
+  });
+});
+
+test("test case UI includes simple textarea and ordered-list steps behavior", () => {
+  assert.match(testCaseSectionSource, /stepsText/);
+  assert.match(testCaseSectionSource, /\.split\("\\n"\)/);
+  assert.match(testCaseSectionSource, /\.filter\(Boolean\)/);
+  assert.match(testCaseSectionSource, /Um passo por linha/);
+  assert.match(testCaseSectionSource, /<ol/);
+  assert.match(testCaseSectionSource, /testCase\.steps\.map/);
+});
+
+test("test case navigation points to the local MVP section", () => {
+  assert.match(i18nSource, /label: "Casos de teste", href: "#test-cases", status: "MVP local"/);
+  assert.match(testCaseSectionSource, /id="test-cases"/);
 });
 
 test("language selector is visible in the application shell", () => {
