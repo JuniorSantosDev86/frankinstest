@@ -13,6 +13,8 @@ import {
   testCaseAutomationStatuses,
   testCasePriorities,
   testCaseStatuses,
+  testCyclePriorities,
+  testCycleStatuses,
   testSuitePriorities,
   testSuiteStatuses,
   testSuiteTypes,
@@ -32,6 +34,12 @@ import {
   type TestCaseStatus,
   type TestCaseSuiteTraceability,
   type TestCaseTraceability,
+  type TestCycle,
+  type TestCycleInput,
+  type TestCyclePriority,
+  type TestCycleStatus,
+  type TestCycleSummary,
+  type TestCycleTraceability,
   type TestLevel,
   type TestScenario,
   type TestScenarioInput,
@@ -40,6 +48,7 @@ import {
   type TestSuitePriority,
   type TestSuiteStatus,
   type TestSuiteSummary,
+  type TestSuiteCycleTraceability,
   type TestSuiteTraceability,
   type TestSuiteType,
 } from "./types";
@@ -282,6 +291,68 @@ export const demoTestSuites: TestSuite[] = [
   },
 ];
 
+export const demoTestCycles: TestCycle[] = [
+  {
+    id: "test_cycle_demo_landing_smoke_planned",
+    projectId: "project_demo_landing",
+    name: "Ciclo smoke - Landing page",
+    objective: "Planejar a execucao curta das validacoes essenciais de captura de lead.",
+    status: "planned",
+    priority: "high",
+    testSuiteIds: ["test_suite_demo_landing_smoke"],
+    owner: "user_demo_qa_lead",
+    plannedStartAt: "2026-05-15",
+    plannedEndAt: "2026-05-16",
+    createdAt: demoTimestamp,
+    updatedAt: demoTimestamp,
+  },
+  {
+    id: "test_cycle_demo_saas_auth_active",
+    projectId: "project_demo_saas",
+    name: "Ciclo regressivo - Autenticacao",
+    objective: "Preparar a regressao deterministica da fronteira de workspace do portal SaaS.",
+    status: "active",
+    priority: "critical",
+    testSuiteIds: ["test_suite_demo_saas_auth_regression"],
+    owner: "user_demo_qa_lead",
+    plannedStartAt: "2026-05-12",
+    plannedEndAt: "2026-05-14",
+    createdAt: demoTimestamp,
+    updatedAt: demoTimestamp,
+  },
+  {
+    id: "test_cycle_demo_landing_release_completed",
+    projectId: "project_demo_landing",
+    name: "Ciclo release - Fluxo principal",
+    objective: "Registrar o planejamento do recorte de release para conversao e responsividade.",
+    status: "completed",
+    priority: "critical",
+    testSuiteIds: [
+      "test_suite_demo_landing_smoke",
+      "test_suite_demo_landing_release_main_flow",
+    ],
+    owner: "user_demo_qa_lead",
+    plannedStartAt: "2026-05-08",
+    plannedEndAt: "2026-05-10",
+    createdAt: demoTimestamp,
+    updatedAt: demoTimestamp,
+  },
+  {
+    id: "test_cycle_demo_landing_mobile_draft",
+    projectId: "project_demo_landing",
+    name: "Ciclo exploratorio - Conversao mobile",
+    objective: "Rascunhar o planejamento da exploracao do CTA em telas mobile estreitas.",
+    status: "draft",
+    priority: "medium",
+    testSuiteIds: ["test_suite_demo_landing_mobile_feature"],
+    owner: "",
+    plannedStartAt: "",
+    plannedEndAt: "",
+    createdAt: demoTimestamp,
+    updatedAt: demoTimestamp,
+  },
+];
+
 export function isScenarioType(value: string): value is ScenarioType {
   return scenarioTypes.includes(value as ScenarioType);
 }
@@ -320,6 +391,24 @@ export function isTestSuiteStatus(value: string): value is TestSuiteStatus {
 
 export function isTestSuitePriority(value: string): value is TestSuitePriority {
   return testSuitePriorities.includes(value as TestSuitePriority);
+}
+
+export function isTestCycleStatus(value: string): value is TestCycleStatus {
+  return testCycleStatuses.includes(value as TestCycleStatus);
+}
+
+export function isTestCyclePriority(value: string): value is TestCyclePriority {
+  return testCyclePriorities.includes(value as TestCyclePriority);
+}
+
+function isValidDateString(value: string): boolean {
+  if (value.trim().length === 0) {
+    return false;
+  }
+
+  const timestamp = Date.parse(value);
+
+  return Number.isFinite(timestamp);
 }
 
 export function validateTestScenarioInput(input: TestScenarioInput): string[] {
@@ -463,6 +552,58 @@ export function validateTestSuiteInput(input: TestSuiteInput): string[] {
   return errors;
 }
 
+export function validateTestCycleInput(input: TestCycleInput): string[] {
+  const errors: string[] = [];
+
+  if (input.projectId.trim().length === 0) {
+    errors.push("test_cycle_project_required");
+  }
+
+  if (input.name.trim().length < 2) {
+    errors.push("test_cycle_name_required");
+  }
+
+  if (input.objective.trim().length < 2) {
+    errors.push("test_cycle_objective_required");
+  }
+
+  if (input.status !== undefined && !isTestCycleStatus(input.status)) {
+    errors.push("invalid_test_cycle_status");
+  }
+
+  if (input.priority !== undefined && !isTestCyclePriority(input.priority)) {
+    errors.push("invalid_test_cycle_priority");
+  }
+
+  if (input.testSuiteIds.length === 0) {
+    errors.push("test_cycle_test_suites_required");
+  }
+
+  if (input.testSuiteIds.some((testSuiteId) => testSuiteId.trim().length < 2)) {
+    errors.push("test_cycle_test_suite_id_required");
+  }
+
+  if (input.plannedStartAt && !isValidDateString(input.plannedStartAt)) {
+    errors.push("invalid_test_cycle_planned_start");
+  }
+
+  if (input.plannedEndAt && !isValidDateString(input.plannedEndAt)) {
+    errors.push("invalid_test_cycle_planned_end");
+  }
+
+  if (
+    input.plannedStartAt &&
+    input.plannedEndAt &&
+    isValidDateString(input.plannedStartAt) &&
+    isValidDateString(input.plannedEndAt) &&
+    Date.parse(input.plannedEndAt) < Date.parse(input.plannedStartAt)
+  ) {
+    errors.push("test_cycle_planned_end_before_start");
+  }
+
+  return errors;
+}
+
 export function listScenariosByProject(
   projectId: string,
   scenarios: TestScenario[] = demoTestScenarios,
@@ -550,6 +691,30 @@ export function listTestSuitesByTestCase(
   return testSuites.filter((testSuite) => testSuite.testCaseIds.includes(testCaseId));
 }
 
+export function listTestCyclesByProject(
+  projectId: string,
+  testCycles: TestCycle[] = demoTestCycles,
+): TestCycle[] {
+  return testCycles.filter((testCycle) => testCycle.projectId === projectId);
+}
+
+export function listTestCyclesByStatus(
+  projectId: string,
+  status: TestCycleStatus,
+  testCycles: TestCycle[] = demoTestCycles,
+): TestCycle[] {
+  return testCycles.filter(
+    (testCycle) => testCycle.projectId === projectId && testCycle.status === status,
+  );
+}
+
+export function listTestCyclesBySuite(
+  testSuiteId: string,
+  testCycles: TestCycle[] = demoTestCycles,
+): TestCycle[] {
+  return testCycles.filter((testCycle) => testCycle.testSuiteIds.includes(testSuiteId));
+}
+
 export function createTestScenario(input: TestScenarioInput, now = new Date()): TestScenario {
   const errors = validateTestScenarioInput(input);
 
@@ -629,6 +794,31 @@ export function createTestSuite(input: TestSuiteInput, now = new Date()): TestSu
     priority: input.priority ?? "medium",
     testCaseIds: input.testCaseIds.map((testCaseId) => testCaseId.trim()),
     owner: input.owner?.trim() ?? "",
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+}
+
+export function createTestCycle(input: TestCycleInput, now = new Date()): TestCycle {
+  const errors = validateTestCycleInput(input);
+
+  if (errors.length > 0) {
+    throw new Error(errors.join(","));
+  }
+
+  const timestamp = now.toISOString();
+
+  return {
+    id: `test_cycle_${now.getTime()}`,
+    projectId: input.projectId,
+    name: input.name.trim(),
+    objective: input.objective.trim(),
+    status: input.status ?? "draft",
+    priority: input.priority ?? "medium",
+    testSuiteIds: input.testSuiteIds.map((testSuiteId) => testSuiteId.trim()),
+    owner: input.owner?.trim() ?? "",
+    plannedStartAt: input.plannedStartAt?.trim() ?? "",
+    plannedEndAt: input.plannedEndAt?.trim() ?? "",
     createdAt: timestamp,
     updatedAt: timestamp,
   };
@@ -728,6 +918,35 @@ export function updateTestSuite(
   return nextTestSuite;
 }
 
+export function updateTestCycle(
+  testCycle: TestCycle,
+  updates: Partial<TestCycleInput>,
+  now = new Date(),
+): TestCycle {
+  const nextTestCycle: TestCycle = {
+    ...testCycle,
+    projectId: updates.projectId ?? testCycle.projectId,
+    name: updates.name?.trim() ?? testCycle.name,
+    objective: updates.objective?.trim() ?? testCycle.objective,
+    status: updates.status ?? testCycle.status,
+    priority: updates.priority ?? testCycle.priority,
+    testSuiteIds:
+      updates.testSuiteIds?.map((testSuiteId) => testSuiteId.trim()) ?? testCycle.testSuiteIds,
+    owner: updates.owner?.trim() ?? testCycle.owner,
+    plannedStartAt: updates.plannedStartAt?.trim() ?? testCycle.plannedStartAt,
+    plannedEndAt: updates.plannedEndAt?.trim() ?? testCycle.plannedEndAt,
+    updatedAt: now.toISOString(),
+  };
+
+  const errors = validateTestCycleInput(nextTestCycle);
+
+  if (errors.length > 0) {
+    throw new Error(errors.join(","));
+  }
+
+  return nextTestCycle;
+}
+
 export function countScenariosByBusinessRule(
   businessRuleId: string,
   scenarios: TestScenario[] = demoTestScenarios,
@@ -754,6 +973,20 @@ export function countTestSuitesByTestCase(
   testSuites: TestSuite[] = demoTestSuites,
 ): number {
   return listTestSuitesByTestCase(testCaseId, testSuites).length;
+}
+
+export function countTestCyclesByProject(
+  projectId: string,
+  testCycles: TestCycle[] = demoTestCycles,
+): number {
+  return listTestCyclesByProject(projectId, testCycles).length;
+}
+
+export function countTestCyclesBySuite(
+  testSuiteId: string,
+  testCycles: TestCycle[] = demoTestCycles,
+): number {
+  return listTestCyclesBySuite(testSuiteId, testCycles).length;
 }
 
 function createEmptyScenariosByType(): Record<ScenarioType, number> {
@@ -783,6 +1016,16 @@ function createEmptyTestCasesByAutomationStatus(): Record<TestCaseAutomationStat
       [automationStatus]: 0,
     }),
     {} as Record<TestCaseAutomationStatus, number>,
+  );
+}
+
+function createEmptyCyclesByStatus(): Record<TestCycleStatus, number> {
+  return testCycleStatuses.reduce(
+    (totals, status) => ({
+      ...totals,
+      [status]: 0,
+    }),
+    {} as Record<TestCycleStatus, number>,
   );
 }
 
@@ -862,6 +1105,32 @@ export function getTestSuiteSummary(
     archivedSuites: projectSuites.filter((testSuite) => testSuite.status === "archived").length,
     totalLinkedTestCases: linkedTestCaseIds.size,
     suitesByType,
+  };
+}
+
+export function getTestCycleSummary(
+  projectId: string,
+  testCycles: TestCycle[] = demoTestCycles,
+): TestCycleSummary {
+  const projectCycles = listTestCyclesByProject(projectId, testCycles);
+  const cyclesByStatus = createEmptyCyclesByStatus();
+  const linkedSuiteIds = new Set<string>();
+
+  projectCycles.forEach((testCycle) => {
+    cyclesByStatus[testCycle.status] += 1;
+    testCycle.testSuiteIds.forEach((testSuiteId) => linkedSuiteIds.add(testSuiteId));
+  });
+
+  return {
+    totalCycles: projectCycles.length,
+    draftCycles: projectCycles.filter((testCycle) => testCycle.status === "draft").length,
+    plannedCycles: projectCycles.filter((testCycle) => testCycle.status === "planned").length,
+    activeCycles: projectCycles.filter((testCycle) => testCycle.status === "active").length,
+    completedCycles: projectCycles.filter((testCycle) => testCycle.status === "completed").length,
+    archivedCycles: projectCycles.filter((testCycle) => testCycle.status === "archived").length,
+    criticalCycles: projectCycles.filter((testCycle) => testCycle.priority === "critical").length,
+    totalLinkedSuites: linkedSuiteIds.size,
+    cyclesByStatus,
   };
 }
 
@@ -1009,5 +1278,72 @@ export function getTestCaseSuiteTraceability(
     ...testCaseTraceability,
     testSuites: testSuitesForCase,
     suiteCount: testSuitesForCase.length,
+  };
+}
+
+export function getTestCycleTraceability(
+  testCycleId: string,
+  testCycles: TestCycle[] = demoTestCycles,
+  testSuites: TestSuite[] = demoTestSuites,
+  testCases: TestCase[] = demoTestCases,
+  scenarios: TestScenario[] = demoTestScenarios,
+  projects: Project[] = demoProjects,
+  modules: ProductModule[] = demoProductModules,
+  requirements: Requirement[] = demoRequirements,
+  businessRules: BusinessRule[] = demoBusinessRules,
+): TestCycleTraceability {
+  const testCycle = testCycles.find((item) => item.id === testCycleId) ?? null;
+  const linkedSuites = testCycle
+    ? testSuites.filter((testSuite) => testCycle.testSuiteIds.includes(testSuite.id))
+    : [];
+
+  return {
+    project: testCycle
+      ? projects.find((project) => project.id === testCycle.projectId) ?? null
+      : null,
+    testCycle,
+    testSuites: linkedSuites,
+    testSuiteTraceability: linkedSuites.map((testSuite) =>
+      getTestSuiteTraceability(
+        testSuite.id,
+        testSuites,
+        testCases,
+        scenarios,
+        projects,
+        modules,
+        requirements,
+        businessRules,
+      ),
+    ),
+  };
+}
+
+export function getTestSuiteCycleTraceability(
+  testSuiteId: string,
+  testSuites: TestSuite[] = demoTestSuites,
+  testCycles: TestCycle[] = demoTestCycles,
+  testCases: TestCase[] = demoTestCases,
+  scenarios: TestScenario[] = demoTestScenarios,
+  projects: Project[] = demoProjects,
+  modules: ProductModule[] = demoProductModules,
+  requirements: Requirement[] = demoRequirements,
+  businessRules: BusinessRule[] = demoBusinessRules,
+): TestSuiteCycleTraceability {
+  const testSuiteTraceability = getTestSuiteTraceability(
+    testSuiteId,
+    testSuites,
+    testCases,
+    scenarios,
+    projects,
+    modules,
+    requirements,
+    businessRules,
+  );
+  const testCyclesForSuite = listTestCyclesBySuite(testSuiteId, testCycles);
+
+  return {
+    ...testSuiteTraceability,
+    testCycles: testCyclesForSuite,
+    cycleCount: testCyclesForSuite.length,
   };
 }

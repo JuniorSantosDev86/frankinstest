@@ -52,11 +52,12 @@ const testScenarioSectionSource = readFileSync(
 );
 const testCaseSectionSource = readFileSync("src/app/components/TestCaseSection.tsx", "utf8");
 const testSuiteSectionSource = readFileSync("src/app/components/TestSuiteSection.tsx", "utf8");
+const testCycleSectionSource = readFileSync("src/app/components/TestCycleSection.tsx", "utf8");
 const metricCardSource = readFileSync("src/app/components/MetricCard.tsx", "utf8");
 const traceabilityFlowSource = readFileSync("src/app/components/TraceabilityFlow.tsx", "utf8");
 const insightCardsSource = readFileSync("src/app/components/InsightCards.tsx", "utf8");
 const quickActionsSource = readFileSync("src/app/components/QuickActions.tsx", "utf8");
-const productSource = `${pageSource}\n${i18nSource}\n${testScenarioSectionSource}\n${testCaseSectionSource}\n${testSuiteSectionSource}\n${metricCardSource}\n${traceabilityFlowSource}\n${insightCardsSource}\n${quickActionsSource}`;
+const productSource = `${pageSource}\n${i18nSource}\n${testScenarioSectionSource}\n${testCaseSectionSource}\n${testSuiteSectionSource}\n${testCycleSectionSource}\n${metricCardSource}\n${traceabilityFlowSource}\n${insightCardsSource}\n${quickActionsSource}`;
 const projectTypesSource = readFileSync("src/lib/projects/types.ts", "utf8");
 const projectServiceSource = readFileSync("src/lib/projects/projectService.ts", "utf8");
 const businessTypesSource = readFileSync("src/lib/business-understanding/types.ts", "utf8");
@@ -83,6 +84,7 @@ test("FrankInTest shell exposes the required navigation sections", () => {
     "Cenários de teste",
     "Casos de teste",
     "Suítes de teste",
+    "Ciclos de teste",
     "Check-up",
     "Reports",
     "FrankInDrift",
@@ -119,6 +121,7 @@ test("sidebar navigation includes expected QA workspace items", () => {
     "Cenários de Teste",
     "Casos de Teste",
     "Suítes de teste",
+    "Ciclos de teste",
     "Relatórios",
     "FrankInDrift",
     "Configurações",
@@ -1100,6 +1103,192 @@ test("test suite traceability connects project, suite, and linked test cases", (
   });
 });
 
+test("test cycle model values match Block 05C scope", () => {
+  assert.deepEqual(testDesignTypes.testCycleStatuses, [
+    "draft",
+    "planned",
+    "active",
+    "completed",
+    "archived",
+  ]);
+  assert.deepEqual(testDesignTypes.testCyclePriorities, [
+    "low",
+    "medium",
+    "high",
+    "critical",
+  ]);
+  assert.match(testDesignTypesSource, /TestCycle/);
+  assert.match(testDesignServiceSource, /demoTestCycles/);
+});
+
+test("test cycle input validation accepts supported values and rejects invalid values", () => {
+  const validInput = {
+    projectId: "project_demo_landing",
+    name: "Ciclo smoke - Landing page",
+    objective: "Planejar o recorte smoke da landing page.",
+    status: "planned",
+    priority: "high",
+    testSuiteIds: ["test_suite_demo_landing_smoke"],
+    owner: "user_demo_qa_lead",
+    plannedStartAt: "2026-05-15",
+    plannedEndAt: "2026-05-16",
+  };
+
+  assert.deepEqual(testDesignService.validateTestCycleInput(validInput), []);
+  assert.equal(testDesignService.isTestCycleStatus("planned"), true);
+  assert.equal(testDesignService.isTestCycleStatus("ready"), false);
+  assert.equal(testDesignService.isTestCyclePriority("critical"), true);
+  assert.equal(testDesignService.isTestCyclePriority("urgent"), false);
+  assert.deepEqual(
+    testDesignService.validateTestCycleInput({
+      ...validInput,
+      projectId: "",
+      name: "",
+      objective: "",
+      status: "ready",
+      priority: "urgent",
+      testSuiteIds: ["x"],
+      plannedStartAt: "invalid-date",
+      plannedEndAt: "2026-05-14",
+    }),
+    [
+      "test_cycle_project_required",
+      "test_cycle_name_required",
+      "test_cycle_objective_required",
+      "invalid_test_cycle_status",
+      "invalid_test_cycle_priority",
+      "test_cycle_test_suite_id_required",
+      "invalid_test_cycle_planned_start",
+    ],
+  );
+  assert.deepEqual(
+    testDesignService.validateTestCycleInput({ ...validInput, testSuiteIds: [] }),
+    ["test_cycle_test_suites_required"],
+  );
+  assert.deepEqual(
+    testDesignService.validateTestCycleInput({
+      ...validInput,
+      plannedStartAt: "2026-05-20",
+      plannedEndAt: "2026-05-19",
+    }),
+    ["test_cycle_planned_end_before_start"],
+  );
+
+  const testCycle = testDesignService.createTestCycle(
+    validInput,
+    new Date("2026-05-12T12:15:00.000Z"),
+  );
+  assert.equal(testCycle.id, "test_cycle_1778588100000");
+  assert.equal(testCycle.status, "planned");
+  assert.deepEqual(testCycle.testSuiteIds, validInput.testSuiteIds);
+  assert.equal(testCycle.createdAt, "2026-05-12T12:15:00.000Z");
+});
+
+test("test cycle listing helpers filter by project, status, and suite", () => {
+  assert.deepEqual(
+    testDesignService
+      .listTestCyclesByProject("project_demo_landing")
+      .map((testCycle) => testCycle.id)
+      .sort(),
+    [
+      "test_cycle_demo_landing_mobile_draft",
+      "test_cycle_demo_landing_release_completed",
+      "test_cycle_demo_landing_smoke_planned",
+    ],
+  );
+  assert.deepEqual(
+    testDesignService
+      .listTestCyclesByStatus("project_demo_landing", "planned")
+      .map((testCycle) => testCycle.id),
+    ["test_cycle_demo_landing_smoke_planned"],
+  );
+  assert.deepEqual(
+    testDesignService
+      .listTestCyclesBySuite("test_suite_demo_landing_smoke")
+      .map((testCycle) => testCycle.status)
+      .sort(),
+    ["completed", "planned"],
+  );
+});
+
+test("test cycle counts and summary are deterministic", () => {
+  assert.equal(testDesignService.countTestCyclesByProject("project_demo_landing"), 3);
+  assert.equal(testDesignService.countTestCyclesBySuite("test_suite_demo_landing_smoke"), 2);
+
+  assert.deepEqual(testDesignService.getTestCycleSummary("project_demo_landing"), {
+    totalCycles: 3,
+    draftCycles: 1,
+    plannedCycles: 1,
+    activeCycles: 0,
+    completedCycles: 1,
+    archivedCycles: 0,
+    criticalCycles: 1,
+    totalLinkedSuites: 3,
+    cyclesByStatus: {
+      draft: 1,
+      planned: 1,
+      active: 0,
+      completed: 1,
+      archived: 0,
+    },
+  });
+
+  assert.deepEqual(testDesignService.getTestCycleSummary("project_demo_saas"), {
+    totalCycles: 1,
+    draftCycles: 0,
+    plannedCycles: 0,
+    activeCycles: 1,
+    completedCycles: 0,
+    archivedCycles: 0,
+    criticalCycles: 1,
+    totalLinkedSuites: 1,
+    cyclesByStatus: {
+      draft: 0,
+      planned: 0,
+      active: 1,
+      completed: 0,
+      archived: 0,
+    },
+  });
+});
+
+test("test cycle traceability connects project, cycle, suites, and cases", () => {
+  const cycleTraceability = testDesignService.getTestCycleTraceability(
+    "test_cycle_demo_landing_release_completed",
+  );
+
+  assert.equal(cycleTraceability.project.id, "project_demo_landing");
+  assert.equal(cycleTraceability.testCycle.id, "test_cycle_demo_landing_release_completed");
+  assert.deepEqual(
+    cycleTraceability.testSuites.map((testSuite) => testSuite.id).sort(),
+    ["test_suite_demo_landing_release_main_flow", "test_suite_demo_landing_smoke"],
+  );
+  assert.equal(cycleTraceability.testSuiteTraceability.length, 2);
+  assert.equal(
+    cycleTraceability.testSuiteTraceability[0].testCaseTraceability[0].project.id,
+    "project_demo_landing",
+  );
+
+  const suiteCycleTraceability = testDesignService.getTestSuiteCycleTraceability(
+    "test_suite_demo_landing_smoke",
+  );
+
+  assert.equal(suiteCycleTraceability.project.id, "project_demo_landing");
+  assert.equal(suiteCycleTraceability.testSuite.id, "test_suite_demo_landing_smoke");
+  assert.equal(suiteCycleTraceability.cycleCount, 2);
+  assert.deepEqual(
+    suiteCycleTraceability.testCycles.map((testCycle) => testCycle.id).sort(),
+    ["test_cycle_demo_landing_release_completed", "test_cycle_demo_landing_smoke_planned"],
+  );
+
+  assert.deepEqual(testDesignService.getTestCycleTraceability("test_cycle_missing"), {
+    project: null,
+    testCycle: null,
+    testSuites: [],
+    testSuiteTraceability: [],
+  });
+});
+
 test("test scenario UI source exists and exposes the pt-BR section", () => {
   assert.match(pageSource, /TestScenarioSection/);
   assert.match(testScenarioSectionSource, /Cenários de teste/);
@@ -1242,6 +1431,66 @@ test("test suite UI preserves relationship labels and suite metadata", () => {
     "Performance",
   ].forEach((copy) => {
     assert.match(testSuiteSectionSource, new RegExp(copy));
+  });
+});
+
+test("test cycle UI source exists and exposes the pt-BR section", () => {
+  assert.match(pageSource, /TestCycleSection/);
+  assert.match(testCycleSectionSource, /Ciclos de teste/);
+  assert.match(testCycleSectionSource, /Projeto em análise/);
+  assert.match(testCycleSectionSource, /Resumo de ciclos/);
+  assert.match(testCycleSectionSource, /Novo ciclo/);
+  assert.match(testCycleSectionSource, /Editar ciclo/);
+});
+
+test("test cycle UI uses local demo persistence and service helpers", () => {
+  assert.match(testCycleSectionSource, /frankintest\.block05\.testCycles/);
+  assert.match(testCycleSectionSource, /frankintest\.block05\.testSuites/);
+  assert.match(testCycleSectionSource, /demoTestCycles/);
+  assert.match(testCycleSectionSource, /demoTestSuites/);
+  assert.match(testCycleSectionSource, /validateTestCycleInput/);
+  assert.match(testCycleSectionSource, /createTestCycle/);
+  assert.match(testCycleSectionSource, /updateTestCycle/);
+  assert.match(testCycleSectionSource, /getTestCycleSummary/);
+  assert.match(testCycleSectionSource, /listTestCyclesByProject/);
+  assert.match(testCycleSectionSource, /listTestCyclesBySuite/);
+});
+
+test("test cycle UI includes multi-select checkboxes for linked test suites", () => {
+  assert.match(testCycleSectionSource, /Selecionar suítes de teste/);
+  assert.match(testCycleSectionSource, /type="checkbox"/);
+  assert.match(testCycleSectionSource, /checked=\{formState\.testSuiteIds\.includes\(testSuite\.id\)\}/);
+  assert.match(testCycleSectionSource, /toggleTestSuite/);
+  assert.match(testCycleSectionSource, /validateTestCycleInput\(input\)/);
+  assert.match(testCycleSectionSource, /ao menos uma suíte de teste vinculada/);
+});
+
+test("test cycle UI preserves relationship labels and cycle metadata", () => {
+  [
+    "Projeto -&gt; Ciclo de teste -&gt; Suítes de teste",
+    "Projeto",
+    "Módulo",
+    "Requisito",
+    "Regra de negócio",
+    "Cenário de teste",
+    "Caso de teste",
+    "Suíte de teste",
+    "Ciclo de teste",
+    "Suítes vinculadas",
+    "Objetivo",
+    "Prioridade",
+    "Status",
+    "Responsável",
+    "Início planejado",
+    "Fim planejado",
+    "Rascunho",
+    "Planejado",
+    "Ativo",
+    "Concluído",
+    "Arquivado",
+    "Este ciclo ainda não executa testes; execução será adicionada em bloco posterior.",
+  ].forEach((copy) => {
+    assert.match(testCycleSectionSource, new RegExp(copy));
   });
 });
 

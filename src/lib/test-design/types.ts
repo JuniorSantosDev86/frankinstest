@@ -75,6 +75,20 @@ export const testSuitePriorities = ["low", "medium", "high", "critical"] as cons
 
 export type TestSuitePriority = (typeof testSuitePriorities)[number];
 
+export const testCycleStatuses = [
+  "draft",
+  "planned",
+  "active",
+  "completed",
+  "archived",
+] as const;
+
+export type TestCycleStatus = (typeof testCycleStatuses)[number];
+
+export const testCyclePriorities = ["low", "medium", "high", "critical"] as const;
+
+export type TestCyclePriority = (typeof testCyclePriorities)[number];
+
 export type TestScenario = {
   id: string;
   projectId: string;
@@ -129,6 +143,21 @@ export type TestSuite = {
   updatedAt: string;
 };
 
+export type TestCycle = {
+  id: string;
+  projectId: string;
+  name: string;
+  objective: string;
+  status: TestCycleStatus;
+  priority: TestCyclePriority;
+  testSuiteIds: string[];
+  owner: string;
+  plannedStartAt: string;
+  plannedEndAt: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type TestScenarioInput = {
   projectId: string;
   moduleId: string;
@@ -174,6 +203,18 @@ export type TestSuiteInput = {
   owner?: string;
 };
 
+export type TestCycleInput = {
+  projectId: string;
+  name: string;
+  objective: string;
+  status?: TestCycleStatus;
+  priority?: TestCyclePriority;
+  testSuiteIds: string[];
+  owner?: string;
+  plannedStartAt?: string;
+  plannedEndAt?: string;
+};
+
 export type ScenarioDesignSummary = {
   totalScenarios: number;
   readyScenarios: number;
@@ -202,6 +243,18 @@ export type TestSuiteSummary = {
   archivedSuites: number;
   totalLinkedTestCases: number;
   suitesByType: Record<TestSuiteType, number>;
+};
+
+export type TestCycleSummary = {
+  totalCycles: number;
+  draftCycles: number;
+  plannedCycles: number;
+  activeCycles: number;
+  completedCycles: number;
+  archivedCycles: number;
+  criticalCycles: number;
+  totalLinkedSuites: number;
+  cyclesByStatus: Record<TestCycleStatus, number>;
 };
 
 export type BusinessRuleScenarioTraceability = {
@@ -238,6 +291,22 @@ export type TestSuiteTraceability = {
   testSuite: TestSuite | null;
   testCases: TestCase[];
   testCaseTraceability: TestCaseTraceability[];
+};
+
+export type TestCycleTraceability = {
+  project: Project | null;
+  testCycle: TestCycle | null;
+  testSuites: TestSuite[];
+  testSuiteTraceability: TestSuiteTraceability[];
+};
+
+export type TestSuiteCycleTraceability = {
+  project: Project | null;
+  testSuite: TestSuite | null;
+  testCases: TestCase[];
+  testCaseTraceability: TestCaseTraceability[];
+  testCycles: TestCycle[];
+  cycleCount: number;
 };
 
 export type TestCaseSuiteTraceability = {
