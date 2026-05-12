@@ -46,7 +46,11 @@ function loadTsModule(relativePath) {
 
 const pageSource = readFileSync("src/app/page.tsx", "utf8");
 const i18nSource = readFileSync("src/app/i18n.ts", "utf8");
-const productSource = `${pageSource}\n${i18nSource}`;
+const testScenarioSectionSource = readFileSync(
+  "src/app/components/TestScenarioSection.tsx",
+  "utf8",
+);
+const productSource = `${pageSource}\n${i18nSource}\n${testScenarioSectionSource}`;
 const projectTypesSource = readFileSync("src/lib/projects/types.ts", "utf8");
 const projectServiceSource = readFileSync("src/lib/projects/projectService.ts", "utf8");
 const businessTypesSource = readFileSync("src/lib/business-understanding/types.ts", "utf8");
@@ -70,6 +74,7 @@ test("FrankInTest shell exposes the required navigation sections", () => {
     "Control Tower",
     "Projects",
     "QA Workspace",
+    "Cenários de teste",
     "Check-up",
     "Reports",
     "FrankInDrift",
@@ -619,6 +624,43 @@ test("test scenario traceability connects project, module, requirement, rule, an
     requirement: null,
     businessRule: null,
     scenario: null,
+  });
+});
+
+test("test scenario UI source exists and exposes the pt-BR section", () => {
+  assert.match(pageSource, /TestScenarioSection/);
+  assert.match(testScenarioSectionSource, /Cenários de teste/);
+  assert.match(testScenarioSectionSource, /Projeto em análise/);
+  assert.match(testScenarioSectionSource, /Resumo de cenários/);
+  assert.match(testScenarioSectionSource, /Novo cenário/);
+  assert.match(testScenarioSectionSource, /Editar cenário/);
+});
+
+test("test scenario UI uses local demo persistence and service helpers", () => {
+  assert.match(testScenarioSectionSource, /frankintest\.block04\.scenarios/);
+  assert.match(testScenarioSectionSource, /demoTestScenarios/);
+  assert.match(testScenarioSectionSource, /validateTestScenarioInput/);
+  assert.match(testScenarioSectionSource, /createTestScenario/);
+  assert.match(testScenarioSectionSource, /updateTestScenario/);
+  assert.match(testScenarioSectionSource, /getScenarioDesignSummary/);
+  assert.match(testScenarioSectionSource, /listScenariosByProject/);
+});
+
+test("test scenario UI preserves project module requirement rule traceability flow", () => {
+  [
+    "Projeto -&gt; Módulo -&gt; Requisito -&gt; Regra de negócio -&gt; Cenário de teste",
+    "Módulo",
+    "Requisito",
+    "Regra de negócio",
+    "Cenário de teste",
+    "Tipo de cenário",
+    "Prioridade",
+    "Status",
+    "Nível de teste",
+    "Rascunho assistido por IA",
+    "Revisado por",
+  ].forEach((copy) => {
+    assert.match(testScenarioSectionSource, new RegExp(copy));
   });
 });
 

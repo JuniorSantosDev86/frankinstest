@@ -61,6 +61,7 @@ import {
   type RiskLevel,
 } from "@/lib/projects/types";
 import { getMembership } from "@/lib/workspace/access";
+import { TestScenarioSection } from "./components/TestScenarioSection";
 import { defaultLocale, isSupportedLocale, supportedLocales, translations, type Locale } from "./i18n";
 
 const projectStorageKey = "frankintest.block02.projects";
@@ -1380,6 +1381,13 @@ export default function Home() {
               </section>
             </div>
           </section>
+
+          <TestScenarioSection
+            projects={visibleProjects}
+            modules={modules}
+            requirements={requirements}
+            businessRules={businessRules}
+          />
 
           <section className="grid gap-6 2xl:grid-cols-[1.2fr_0.8fr]">
             <div className="rounded-[1.5rem] border border-slate-900/10 bg-slate-950 p-6 text-white shadow-xl shadow-slate-900/15">
