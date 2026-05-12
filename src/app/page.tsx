@@ -67,6 +67,7 @@ import { MetricCard } from "./components/MetricCard";
 import { QuickActions } from "./components/QuickActions";
 import { TestScenarioSection } from "./components/TestScenarioSection";
 import { TestCaseSection } from "./components/TestCaseSection";
+import { TestSuiteSection } from "./components/TestSuiteSection";
 import { TraceabilityFlow } from "./components/TraceabilityFlow";
 import { defaultLocale, isSupportedLocale, supportedLocales, translations, type Locale } from "./i18n";
 
@@ -1481,6 +1482,13 @@ export default function Home() {
           />
 
           <TestCaseSection
+            projects={visibleProjects}
+            modules={modules}
+            requirements={requirements}
+            businessRules={businessRules}
+          />
+
+          <TestSuiteSection
             projects={visibleProjects}
             modules={modules}
             requirements={requirements}

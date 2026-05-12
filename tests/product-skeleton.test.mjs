@@ -51,11 +51,12 @@ const testScenarioSectionSource = readFileSync(
   "utf8",
 );
 const testCaseSectionSource = readFileSync("src/app/components/TestCaseSection.tsx", "utf8");
+const testSuiteSectionSource = readFileSync("src/app/components/TestSuiteSection.tsx", "utf8");
 const metricCardSource = readFileSync("src/app/components/MetricCard.tsx", "utf8");
 const traceabilityFlowSource = readFileSync("src/app/components/TraceabilityFlow.tsx", "utf8");
 const insightCardsSource = readFileSync("src/app/components/InsightCards.tsx", "utf8");
 const quickActionsSource = readFileSync("src/app/components/QuickActions.tsx", "utf8");
-const productSource = `${pageSource}\n${i18nSource}\n${testScenarioSectionSource}\n${testCaseSectionSource}\n${metricCardSource}\n${traceabilityFlowSource}\n${insightCardsSource}\n${quickActionsSource}`;
+const productSource = `${pageSource}\n${i18nSource}\n${testScenarioSectionSource}\n${testCaseSectionSource}\n${testSuiteSectionSource}\n${metricCardSource}\n${traceabilityFlowSource}\n${insightCardsSource}\n${quickActionsSource}`;
 const projectTypesSource = readFileSync("src/lib/projects/types.ts", "utf8");
 const projectServiceSource = readFileSync("src/lib/projects/projectService.ts", "utf8");
 const businessTypesSource = readFileSync("src/lib/business-understanding/types.ts", "utf8");
@@ -81,6 +82,7 @@ test("FrankInTest shell exposes the required navigation sections", () => {
     "QA Workspace",
     "Cenários de teste",
     "Casos de teste",
+    "Suítes de teste",
     "Check-up",
     "Reports",
     "FrankInDrift",
@@ -116,6 +118,7 @@ test("sidebar navigation includes expected QA workspace items", () => {
     "Regras de Negócio",
     "Cenários de Teste",
     "Casos de Teste",
+    "Suítes de teste",
     "Relatórios",
     "FrankInDrift",
     "Configurações",
@@ -1183,6 +1186,65 @@ test("test case UI includes simple textarea and ordered-list steps behavior", ()
   assert.match(testCaseSectionSource, /Um passo por linha/);
 });
 
+test("test suite UI source exists and exposes the pt-BR section", () => {
+  assert.match(pageSource, /TestSuiteSection/);
+  assert.match(testSuiteSectionSource, /Suítes de teste/);
+  assert.match(testSuiteSectionSource, /Projeto em análise/);
+  assert.match(testSuiteSectionSource, /Resumo de suítes/);
+  assert.match(testSuiteSectionSource, /Nova suíte/);
+  assert.match(testSuiteSectionSource, /Editar suíte/);
+});
+
+test("test suite UI uses local demo persistence and service helpers", () => {
+  assert.match(testSuiteSectionSource, /frankintest\.block05\.testSuites/);
+  assert.match(testSuiteSectionSource, /demoTestSuites/);
+  assert.match(testSuiteSectionSource, /validateTestSuiteInput/);
+  assert.match(testSuiteSectionSource, /createTestSuite/);
+  assert.match(testSuiteSectionSource, /updateTestSuite/);
+  assert.match(testSuiteSectionSource, /getTestSuiteSummary/);
+  assert.match(testSuiteSectionSource, /listTestSuitesByProject/);
+  assert.match(testSuiteSectionSource, /listTestSuitesByTestCase/);
+});
+
+test("test suite UI includes multi-select checkboxes for linked test cases", () => {
+  assert.match(testSuiteSectionSource, /Selecionar casos de teste/);
+  assert.match(testSuiteSectionSource, /type="checkbox"/);
+  assert.match(testSuiteSectionSource, /checked=\{formState\.testCaseIds\.includes\(testCase\.id\)\}/);
+  assert.match(testSuiteSectionSource, /toggleTestCase/);
+  assert.match(testSuiteSectionSource, /validateTestSuiteInput\(input\)/);
+  assert.match(testSuiteSectionSource, /ao menos um caso de teste vinculado/);
+});
+
+test("test suite UI preserves relationship labels and suite metadata", () => {
+  [
+    "Projeto -&gt; Suíte de teste -&gt; Casos de teste",
+    "Projeto",
+    "Módulo",
+    "Requisito",
+    "Regra de negócio",
+    "Cenário de teste",
+    "Caso de teste",
+    "Suíte de teste",
+    "Casos vinculados",
+    "Tipo de suíte",
+    "Prioridade",
+    "Status",
+    "Responsável",
+    "Smoke",
+    "Regressão",
+    "Release",
+    "Funcional",
+    "Exploratório",
+    "API",
+    "Mobile",
+    "Segurança",
+    "Acessibilidade",
+    "Performance",
+  ].forEach((copy) => {
+    assert.match(testSuiteSectionSource, new RegExp(copy));
+  });
+});
+
 test("dashboard traceability, insights, and quick actions sections are present as UI-only cards", () => {
   [
     "Rastreabilidade",
@@ -1202,6 +1264,11 @@ test("dashboard traceability, insights, and quick actions sections are present a
 test("test case navigation points to the local MVP section", () => {
   assert.match(i18nSource, /label: "Casos de teste", href: "#test-cases", status: "MVP local"/);
   assert.match(testCaseSectionSource, /id="test-cases"/);
+});
+
+test("test suite navigation points to the local MVP section", () => {
+  assert.match(i18nSource, /label: "Suítes de teste", href: "#test-suites", status: "MVP local"/);
+  assert.match(testSuiteSectionSource, /id="test-suites"/);
 });
 
 test("language selector is visible in the application shell", () => {
