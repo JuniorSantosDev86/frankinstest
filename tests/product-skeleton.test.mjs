@@ -54,12 +54,16 @@ const businessServiceSource = readFileSync(
   "src/lib/business-understanding/businessUnderstandingService.ts",
   "utf8",
 );
+const testDesignTypesSource = readFileSync("src/lib/test-design/types.ts", "utf8");
+const testDesignServiceSource = readFileSync("src/lib/test-design/testDesignService.ts", "utf8");
 const mockSession = loadTsModule("src/lib/auth/mockSession");
 const access = loadTsModule("src/lib/workspace/access");
 const projectTypesModule = loadTsModule("src/lib/projects/types");
 const projectService = loadTsModule("src/lib/projects/projectService");
 const businessTypes = loadTsModule("src/lib/business-understanding/types");
 const businessService = loadTsModule("src/lib/business-understanding/businessUnderstandingService");
+const testDesignTypes = loadTsModule("src/lib/test-design/types");
+const testDesignService = loadTsModule("src/lib/test-design/testDesignService");
 
 test("FrankInTest shell exposes the required navigation sections", () => {
   [
@@ -254,9 +258,12 @@ test("module input validation accepts supported values and rejects invalid value
     ["module_name_required", "invalid_module_criticality", "invalid_module_status"],
   );
 
-  const module = businessService.createModule(validInput, new Date("2026-05-12T10:00:00.000Z"));
-  assert.equal(module.projectId, "project_demo_saas");
-  assert.equal(module.createdAt, "2026-05-12T10:00:00.000Z");
+  const productModule = businessService.createModule(
+    validInput,
+    new Date("2026-05-12T10:00:00.000Z"),
+  );
+  assert.equal(productModule.projectId, "project_demo_saas");
+  assert.equal(productModule.createdAt, "2026-05-12T10:00:00.000Z");
 });
 
 test("requirement model values match Block 03 scope", () => {
@@ -414,6 +421,205 @@ test("traceability summary counts modules, requirements, rules, and review flags
     1,
   );
   assert.equal(businessService.getModuleTraceability("project_demo_saas").length, 2);
+});
+
+test("test scenario model values match Block 04A scope", () => {
+  assert.deepEqual(testDesignTypes.scenarioTypes, [
+    "positive",
+    "negative",
+    "edge_case",
+    "regression",
+    "exploratory",
+    "security",
+    "accessibility",
+    "performance",
+    "integration",
+  ]);
+  assert.deepEqual(testDesignTypes.scenarioPriorities, ["low", "medium", "high", "critical"]);
+  assert.deepEqual(testDesignTypes.scenarioStatuses, [
+    "draft",
+    "ready",
+    "needs_review",
+    "archived",
+  ]);
+  assert.deepEqual(testDesignTypes.testLevels, [
+    "unit",
+    "integration",
+    "api",
+    "e2e",
+    "system",
+    "acceptance",
+    "exploratory",
+  ]);
+  assert.match(testDesignTypesSource, /TestScenario/);
+  assert.match(testDesignServiceSource, /demoTestScenarios/);
+});
+
+test("test scenario input validation accepts supported values and rejects invalid values", () => {
+  const validInput = {
+    projectId: "project_demo_saas",
+    moduleId: "module_demo_saas_auth",
+    requirementId: "requirement_demo_saas_session",
+    businessRuleId: "rule_demo_saas_workspace_boundary",
+    title: "Workspace boundary regression",
+    description: "Users should not access projects from another workspace.",
+    scenarioType: "regression",
+    priority: "critical",
+    status: "ready",
+    testLevel: "integration",
+    aiGenerated: false,
+    reviewedBy: "user_demo_qa_lead",
+  };
+
+  assert.deepEqual(testDesignService.validateTestScenarioInput(validInput), []);
+  assert.equal(testDesignService.isScenarioType("edge_case"), true);
+  assert.equal(testDesignService.isScenarioType("edge"), false);
+  assert.equal(testDesignService.isScenarioPriority("critical"), true);
+  assert.equal(testDesignService.isScenarioStatus("needs_review"), true);
+  assert.equal(testDesignService.isTestLevel("e2e"), true);
+  assert.deepEqual(
+    testDesignService.validateTestScenarioInput({
+      ...validInput,
+      projectId: "",
+      moduleId: "",
+      requirementId: "",
+      businessRuleId: "",
+      title: "",
+      scenarioType: "smoke",
+      priority: "urgent",
+      status: "done",
+      testLevel: "browser",
+    }),
+    [
+      "scenario_project_required",
+      "scenario_module_required",
+      "scenario_requirement_required",
+      "scenario_business_rule_required",
+      "scenario_title_required",
+      "invalid_scenario_type",
+      "invalid_scenario_priority",
+      "invalid_scenario_status",
+      "invalid_test_level",
+    ],
+  );
+
+  const scenario = testDesignService.createTestScenario(
+    validInput,
+    new Date("2026-05-12T12:00:00.000Z"),
+  );
+  assert.equal(scenario.id, "scenario_1778587200000");
+  assert.equal(scenario.businessRuleId, "rule_demo_saas_workspace_boundary");
+  assert.equal(scenario.createdAt, "2026-05-12T12:00:00.000Z");
+});
+
+test("test scenario listing helpers filter by project, module, requirement, and business rule", () => {
+  assert.deepEqual(
+    testDesignService
+      .listScenariosByProject("project_demo_landing")
+      .map((scenario) => scenario.id)
+      .sort(),
+    [
+      "scenario_demo_landing_invalid_email",
+      "scenario_demo_landing_mobile_cta_small_screen",
+      "scenario_demo_landing_valid_email",
+    ],
+  );
+  assert.deepEqual(
+    testDesignService
+      .listScenariosByModule("module_demo_landing_conversion")
+      .map((scenario) => scenario.id)
+      .sort(),
+    ["scenario_demo_landing_invalid_email", "scenario_demo_landing_valid_email"],
+  );
+  assert.deepEqual(
+    testDesignService
+      .listScenariosByRequirement("requirement_demo_saas_session")
+      .map((scenario) => scenario.id),
+    ["scenario_demo_saas_workspace_boundary_regression"],
+  );
+  assert.deepEqual(
+    testDesignService
+      .listScenariosByBusinessRule("rule_demo_landing_email")
+      .map((scenario) => scenario.scenarioType)
+      .sort(),
+    ["negative", "positive"],
+  );
+});
+
+test("test scenario counts and design summary are deterministic", () => {
+  assert.equal(testDesignService.countScenariosByBusinessRule("rule_demo_landing_email"), 2);
+
+  assert.deepEqual(testDesignService.getScenarioDesignSummary("project_demo_landing"), {
+    totalScenarios: 3,
+    readyScenarios: 2,
+    scenariosNeedingReview: 1,
+    criticalScenarios: 0,
+    aiGeneratedScenarios: 1,
+    scenariosByType: {
+      positive: 1,
+      negative: 1,
+      edge_case: 1,
+      regression: 0,
+      exploratory: 0,
+      security: 0,
+      accessibility: 0,
+      performance: 0,
+      integration: 0,
+    },
+  });
+
+  assert.deepEqual(testDesignService.getScenarioDesignSummary("project_demo_saas"), {
+    totalScenarios: 1,
+    readyScenarios: 1,
+    scenariosNeedingReview: 0,
+    criticalScenarios: 1,
+    aiGeneratedScenarios: 0,
+    scenariosByType: {
+      positive: 0,
+      negative: 0,
+      edge_case: 0,
+      regression: 1,
+      exploratory: 0,
+      security: 0,
+      accessibility: 0,
+      performance: 0,
+      integration: 0,
+    },
+  });
+});
+
+test("test scenario traceability connects project, module, requirement, rule, and scenario", () => {
+  const ruleTraceability = testDesignService.getBusinessRuleScenarioTraceability(
+    "rule_demo_landing_email",
+  );
+
+  assert.equal(ruleTraceability.businessRule.id, "rule_demo_landing_email");
+  assert.equal(ruleTraceability.scenarioCount, 2);
+  assert.deepEqual(
+    ruleTraceability.scenarios.map((scenario) => scenario.businessRuleId),
+    ["rule_demo_landing_email", "rule_demo_landing_email"],
+  );
+
+  const scenarioTraceability = testDesignService.getScenarioTraceability(
+    "scenario_demo_saas_workspace_boundary_regression",
+  );
+
+  assert.equal(scenarioTraceability.project.id, "project_demo_saas");
+  assert.equal(scenarioTraceability.module.id, "module_demo_saas_auth");
+  assert.equal(scenarioTraceability.requirement.id, "requirement_demo_saas_session");
+  assert.equal(scenarioTraceability.businessRule.id, "rule_demo_saas_workspace_boundary");
+  assert.equal(
+    scenarioTraceability.scenario.id,
+    "scenario_demo_saas_workspace_boundary_regression",
+  );
+
+  assert.deepEqual(testDesignService.getScenarioTraceability("scenario_missing"), {
+    project: null,
+    module: null,
+    requirement: null,
+    businessRule: null,
+    scenario: null,
+  });
 });
 
 test("language selector is visible in the application shell", () => {
