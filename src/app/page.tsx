@@ -4,6 +4,44 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { getMockSession } from "@/lib/auth/mockSession";
 import {
+  createBusinessRule,
+  createModule,
+  createRequirement,
+  demoBusinessRules,
+  demoProductModules,
+  demoRequirements,
+  getBusinessUnderstandingSummary,
+  getModuleTraceability,
+  listBusinessRulesByProject,
+  listRequirementsByProject,
+  updateBusinessRule,
+  updateModule,
+  updateRequirement,
+  validateBusinessRuleInput,
+  validateModuleInput,
+  validateRequirementInput,
+} from "@/lib/business-understanding/businessUnderstandingService";
+import {
+  businessRulePriorities,
+  businessRuleStatuses,
+  moduleCriticalities,
+  moduleStatuses,
+  requirementSources,
+  requirementStatuses,
+  type BusinessRule,
+  type BusinessRuleInput,
+  type BusinessRulePriority,
+  type BusinessRuleStatus,
+  type ModuleCriticality,
+  type ModuleStatus,
+  type ProductModule,
+  type ProductModuleInput,
+  type Requirement,
+  type RequirementInput,
+  type RequirementSource,
+  type RequirementStatus,
+} from "@/lib/business-understanding/types";
+import {
   canCreateProjectWithInput,
   createProject,
   demoProjects,
@@ -26,6 +64,9 @@ import { getMembership } from "@/lib/workspace/access";
 import { defaultLocale, isSupportedLocale, supportedLocales, translations, type Locale } from "./i18n";
 
 const projectStorageKey = "frankintest.block02.projects";
+const moduleStorageKey = "frankintest.block03.modules";
+const requirementStorageKey = "frankintest.block03.requirements";
+const businessRuleStorageKey = "frankintest.block03.businessRules";
 
 type ProjectFormState = {
   name: string;
@@ -47,6 +88,60 @@ const emptyProjectForm: ProjectFormState = {
   status: "active",
 };
 
+type ModuleFormState = {
+  name: string;
+  description: string;
+  criticality: ModuleCriticality;
+  status: ModuleStatus;
+};
+
+const emptyModuleForm: ModuleFormState = {
+  name: "",
+  description: "",
+  criticality: "medium",
+  status: "active",
+};
+
+type RequirementFormState = {
+  moduleId: string;
+  title: string;
+  description: string;
+  source: RequirementSource;
+  status: RequirementStatus;
+  aiGenerated: boolean;
+  reviewedBy: string;
+};
+
+const emptyRequirementForm: RequirementFormState = {
+  moduleId: "",
+  title: "",
+  description: "",
+  source: "user_input",
+  status: "draft",
+  aiGenerated: false,
+  reviewedBy: "",
+};
+
+type BusinessRuleFormState = {
+  requirementId: string;
+  title: string;
+  ruleText: string;
+  priority: BusinessRulePriority;
+  status: BusinessRuleStatus;
+  aiGenerated: boolean;
+  reviewedBy: string;
+};
+
+const emptyBusinessRuleForm: BusinessRuleFormState = {
+  requirementId: "",
+  title: "",
+  ruleText: "",
+  priority: "medium",
+  status: "draft",
+  aiGenerated: false,
+  reviewedBy: "",
+};
+
 export default function Home() {
   const [locale, setLocale] = useState<Locale>(defaultLocale);
   const [projects, setProjects] = useState<Project[]>(() => {
@@ -58,9 +153,52 @@ export default function Home() {
 
     return storedProjects ? (JSON.parse(storedProjects) as Project[]) : demoProjects;
   });
+  const [modules, setModules] = useState<ProductModule[]>(() => {
+    if (typeof window === "undefined") {
+      return demoProductModules;
+    }
+
+    const storedModules = window.localStorage.getItem(moduleStorageKey);
+
+    return storedModules ? (JSON.parse(storedModules) as ProductModule[]) : demoProductModules;
+  });
+  const [requirements, setRequirements] = useState<Requirement[]>(() => {
+    if (typeof window === "undefined") {
+      return demoRequirements;
+    }
+
+    const storedRequirements = window.localStorage.getItem(requirementStorageKey);
+
+    return storedRequirements
+      ? (JSON.parse(storedRequirements) as Requirement[])
+      : demoRequirements;
+  });
+  const [businessRules, setBusinessRules] = useState<BusinessRule[]>(() => {
+    if (typeof window === "undefined") {
+      return demoBusinessRules;
+    }
+
+    const storedBusinessRules = window.localStorage.getItem(businessRuleStorageKey);
+
+    return storedBusinessRules
+      ? (JSON.parse(storedBusinessRules) as BusinessRule[])
+      : demoBusinessRules;
+  });
+  const [selectedProjectId, setSelectedProjectId] = useState(() => demoProjects[0]?.id ?? "");
   const [formState, setFormState] = useState<ProjectFormState>(emptyProjectForm);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [validationError, setValidationError] = useState(false);
+  const [moduleFormState, setModuleFormState] = useState<ModuleFormState>(emptyModuleForm);
+  const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
+  const [moduleValidationError, setModuleValidationError] = useState(false);
+  const [requirementFormState, setRequirementFormState] =
+    useState<RequirementFormState>(emptyRequirementForm);
+  const [editingRequirementId, setEditingRequirementId] = useState<string | null>(null);
+  const [requirementValidationError, setRequirementValidationError] = useState(false);
+  const [businessRuleFormState, setBusinessRuleFormState] =
+    useState<BusinessRuleFormState>(emptyBusinessRuleForm);
+  const [editingBusinessRuleId, setEditingBusinessRuleId] = useState<string | null>(null);
+  const [businessRuleValidationError, setBusinessRuleValidationError] = useState(false);
   const t = translations[locale];
   const session = getMockSession();
   const membership = getMembership(session.user, session.activeOrganization);
@@ -69,10 +207,49 @@ export default function Home() {
     window.localStorage.setItem(projectStorageKey, JSON.stringify(projects));
   }, [projects]);
 
+  useEffect(() => {
+    window.localStorage.setItem(moduleStorageKey, JSON.stringify(modules));
+  }, [modules]);
+
+  useEffect(() => {
+    window.localStorage.setItem(requirementStorageKey, JSON.stringify(requirements));
+  }, [requirements]);
+
+  useEffect(() => {
+    window.localStorage.setItem(businessRuleStorageKey, JSON.stringify(businessRules));
+  }, [businessRules]);
+
   const visibleProjects = useMemo(
     () => projects.filter((project) => project.organizationId === session.activeOrganization.id),
     [projects, session.activeOrganization.id],
   );
+
+  const selectedProject =
+    visibleProjects.find((project) => project.id === selectedProjectId) ?? visibleProjects[0];
+  const activeProjectId = selectedProject?.id ?? "";
+  const projectModules = useMemo(
+    () => modules.filter((module) => module.projectId === activeProjectId),
+    [activeProjectId, modules],
+  );
+  const projectRequirements = useMemo(
+    () => listRequirementsByProject(activeProjectId, requirements),
+    [activeProjectId, requirements],
+  );
+  const projectBusinessRules = useMemo(
+    () => listBusinessRulesByProject(activeProjectId, businessRules),
+    [activeProjectId, businessRules],
+  );
+  const traceabilitySummary = useMemo(
+    () => getBusinessUnderstandingSummary(activeProjectId, modules, requirements, businessRules),
+    [activeProjectId, businessRules, modules, requirements],
+  );
+  const moduleTraceability = useMemo(
+    () => getModuleTraceability(activeProjectId, modules, requirements, businessRules),
+    [activeProjectId, businessRules, modules, requirements],
+  );
+  const activeRequirementModuleId = requirementFormState.moduleId || projectModules[0]?.id || "";
+  const activeBusinessRuleRequirementId =
+    businessRuleFormState.requirementId || projectRequirements[0]?.id || "";
 
   function resetForm() {
     setFormState(emptyProjectForm);
@@ -136,6 +313,153 @@ export default function Home() {
     if (editingProjectId === projectId) {
       resetForm();
     }
+  }
+
+  function resetModuleForm() {
+    setModuleFormState(emptyModuleForm);
+    setEditingModuleId(null);
+    setModuleValidationError(false);
+  }
+
+  function resetRequirementForm() {
+    setRequirementFormState({
+      ...emptyRequirementForm,
+      moduleId: projectModules[0]?.id ?? "",
+    });
+    setEditingRequirementId(null);
+    setRequirementValidationError(false);
+  }
+
+  function resetBusinessRuleForm() {
+    setBusinessRuleFormState({
+      ...emptyBusinessRuleForm,
+      requirementId: projectRequirements[0]?.id ?? "",
+    });
+    setEditingBusinessRuleId(null);
+    setBusinessRuleValidationError(false);
+  }
+
+  function handleModuleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const input: ProductModuleInput = {
+      projectId: activeProjectId,
+      ...moduleFormState,
+    };
+
+    if (validateModuleInput(input).length > 0) {
+      setModuleValidationError(true);
+      return;
+    }
+
+    if (editingModuleId) {
+      setModules((currentModules) =>
+        currentModules.map((module) =>
+          module.id === editingModuleId ? updateModule(module, input) : module,
+        ),
+      );
+    } else {
+      setModules((currentModules) => [createModule(input), ...currentModules]);
+    }
+
+    resetModuleForm();
+  }
+
+  function startEditingModule(module: ProductModule) {
+    setEditingModuleId(module.id);
+    setModuleValidationError(false);
+    setModuleFormState({
+      name: module.name,
+      description: module.description,
+      criticality: module.criticality,
+      status: module.status,
+    });
+  }
+
+  function handleRequirementSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const linkedModule = projectModules.find(
+      (module) => module.id === activeRequirementModuleId,
+    );
+    const input: RequirementInput = {
+      projectId: activeProjectId,
+      ...requirementFormState,
+      moduleId: linkedModule?.id ?? activeRequirementModuleId,
+    };
+
+    if (validateRequirementInput(input).length > 0 || !linkedModule) {
+      setRequirementValidationError(true);
+      return;
+    }
+
+    if (editingRequirementId) {
+      setRequirements((currentRequirements) =>
+        currentRequirements.map((requirement) =>
+          requirement.id === editingRequirementId ? updateRequirement(requirement, input) : requirement,
+        ),
+      );
+    } else {
+      setRequirements((currentRequirements) => [createRequirement(input), ...currentRequirements]);
+    }
+
+    resetRequirementForm();
+  }
+
+  function startEditingRequirement(requirement: Requirement) {
+    setEditingRequirementId(requirement.id);
+    setRequirementValidationError(false);
+    setRequirementFormState({
+      moduleId: requirement.moduleId,
+      title: requirement.title,
+      description: requirement.description,
+      source: requirement.source,
+      status: requirement.status,
+      aiGenerated: requirement.aiGenerated,
+      reviewedBy: requirement.reviewedBy,
+    });
+  }
+
+  function handleBusinessRuleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const linkedRequirement = projectRequirements.find(
+      (requirement) => requirement.id === activeBusinessRuleRequirementId,
+    );
+    const input: BusinessRuleInput = {
+      projectId: activeProjectId,
+      moduleId: linkedRequirement?.moduleId ?? "",
+      ...businessRuleFormState,
+      requirementId: linkedRequirement?.id ?? activeBusinessRuleRequirementId,
+    };
+
+    if (validateBusinessRuleInput(input).length > 0 || !linkedRequirement) {
+      setBusinessRuleValidationError(true);
+      return;
+    }
+
+    if (editingBusinessRuleId) {
+      setBusinessRules((currentRules) =>
+        currentRules.map((rule) =>
+          rule.id === editingBusinessRuleId ? updateBusinessRule(rule, input) : rule,
+        ),
+      );
+    } else {
+      setBusinessRules((currentRules) => [createBusinessRule(input), ...currentRules]);
+    }
+
+    resetBusinessRuleForm();
+  }
+
+  function startEditingBusinessRule(rule: BusinessRule) {
+    setEditingBusinessRuleId(rule.id);
+    setBusinessRuleValidationError(false);
+    setBusinessRuleFormState({
+      requirementId: rule.requirementId,
+      title: rule.title,
+      ruleText: rule.ruleText,
+      priority: rule.priority,
+      status: rule.status,
+      aiGenerated: rule.aiGenerated,
+      reviewedBy: rule.reviewedBy,
+    });
   }
 
   return (
@@ -509,6 +833,554 @@ export default function Home() {
             </div>
           </section>
 
+          <section
+            id="business-understanding"
+            className="rounded-[1.5rem] border border-slate-900/10 bg-white/90 p-6 shadow-xl shadow-slate-900/5 md:p-8"
+          >
+            <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+              <div className="max-w-3xl">
+                <p className="text-sm font-black uppercase tracking-[0.26em] text-teal-700">
+                  {t.businessUnderstanding.eyebrow}
+                </p>
+                <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950">
+                  {t.businessUnderstanding.title}
+                </h2>
+                <p className="mt-3 text-sm leading-7 text-slate-600">
+                  {t.businessUnderstanding.description}
+                </p>
+              </div>
+              <label className="grid min-w-72 gap-2 text-sm font-bold text-slate-700">
+                {t.businessUnderstanding.projectSelectLabel}
+                <select
+                  className="rounded-xl border border-slate-900/10 bg-white px-3 py-2 font-medium outline-none focus:border-teal-600"
+                  value={activeProjectId}
+                  onChange={(event) => {
+                    setSelectedProjectId(event.target.value);
+                    resetModuleForm();
+                    setRequirementFormState(emptyRequirementForm);
+                    setBusinessRuleFormState(emptyBusinessRuleForm);
+                  }}
+                >
+                  {visibleProjects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_1.2fr]">
+              <p className="rounded-2xl border border-teal-800/15 bg-teal-50 px-4 py-3 text-sm font-black text-teal-900">
+                {t.businessUnderstanding.workflowLabel}
+              </p>
+              <p className="rounded-2xl border border-slate-900/10 bg-slate-50 px-4 py-3 text-sm font-semibold leading-6 text-slate-700">
+                {t.businessUnderstanding.persistenceNote}
+              </p>
+            </div>
+
+            <section className="mt-6 rounded-2xl border border-slate-900/10 bg-slate-50 p-5">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="text-xl font-black tracking-tight text-slate-950">
+                    {t.businessUnderstanding.summaryTitle}
+                  </h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">
+                    {selectedProject?.name ?? t.projects.emptyTitle}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+                <SummaryMetric
+                  label={t.businessUnderstanding.summaryMetrics.totalModules}
+                  value={traceabilitySummary.totalModules}
+                />
+                <SummaryMetric
+                  label={t.businessUnderstanding.summaryMetrics.totalRequirements}
+                  value={traceabilitySummary.totalRequirements}
+                />
+                <SummaryMetric
+                  label={t.businessUnderstanding.summaryMetrics.totalBusinessRules}
+                  value={traceabilitySummary.totalBusinessRules}
+                />
+                <SummaryMetric
+                  label={t.businessUnderstanding.summaryMetrics.criticalModules}
+                  value={traceabilitySummary.criticalModules}
+                />
+                <SummaryMetric
+                  label={t.businessUnderstanding.summaryMetrics.requirementsNeedingReview}
+                  value={traceabilitySummary.requirementsNeedingReview}
+                />
+                <SummaryMetric
+                  label={t.businessUnderstanding.summaryMetrics.businessRulesNeedingReview}
+                  value={traceabilitySummary.businessRulesNeedingReview}
+                />
+              </div>
+            </section>
+
+            <div className="mt-6 grid gap-6 xl:grid-cols-3">
+              <section className="rounded-2xl border border-slate-900/10 bg-white p-5">
+                <h3 className="text-xl font-black tracking-tight text-slate-950">
+                  {t.businessUnderstanding.modules.title}
+                </h3>
+                <form onSubmit={handleModuleSubmit} className="mt-4 grid gap-3">
+                  <p className="text-sm font-black text-slate-700">
+                    {editingModuleId
+                      ? t.businessUnderstanding.modules.editTitle
+                      : t.businessUnderstanding.modules.createTitle}
+                  </p>
+                  <label className="grid gap-2 text-sm font-bold text-slate-700">
+                    {t.businessUnderstanding.modules.fields.name}
+                    <input
+                      className="rounded-xl border border-slate-900/10 bg-white px-3 py-2 font-medium outline-none focus:border-teal-600"
+                      placeholder={t.businessUnderstanding.modules.placeholders.name}
+                      value={moduleFormState.name}
+                      onChange={(event) =>
+                        setModuleFormState((current) => ({ ...current, name: event.target.value }))
+                      }
+                    />
+                  </label>
+                  <label className="grid gap-2 text-sm font-bold text-slate-700">
+                    {t.businessUnderstanding.modules.fields.description}
+                    <textarea
+                      className="min-h-24 rounded-xl border border-slate-900/10 bg-white px-3 py-2 font-medium outline-none focus:border-teal-600"
+                      placeholder={t.businessUnderstanding.modules.placeholders.description}
+                      value={moduleFormState.description}
+                      onChange={(event) =>
+                        setModuleFormState((current) => ({
+                          ...current,
+                          description: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+                  <ProjectSelect
+                    label={t.businessUnderstanding.modules.fields.criticality}
+                    value={moduleFormState.criticality}
+                    options={moduleCriticalities}
+                    labels={t.businessUnderstanding.modules.options.criticality}
+                    onChange={(value) =>
+                      setModuleFormState((current) => ({ ...current, criticality: value }))
+                    }
+                  />
+                  <ProjectSelect
+                    label={t.businessUnderstanding.modules.fields.status}
+                    value={moduleFormState.status}
+                    options={moduleStatuses}
+                    labels={t.businessUnderstanding.modules.options.status}
+                    onChange={(value) =>
+                      setModuleFormState((current) => ({ ...current, status: value }))
+                    }
+                  />
+                  {moduleValidationError ? (
+                    <ValidationMessage message={t.businessUnderstanding.validationError} />
+                  ) : null}
+                  <FormActions
+                    isEditing={Boolean(editingModuleId)}
+                    createLabel={t.businessUnderstanding.actions.create}
+                    updateLabel={t.businessUnderstanding.actions.update}
+                    cancelLabel={t.businessUnderstanding.actions.cancel}
+                    onCancel={resetModuleForm}
+                  />
+                </form>
+
+                <div className="mt-5 grid gap-3">
+                  {projectModules.length === 0 ? (
+                    <EmptyState
+                      title={t.businessUnderstanding.modules.emptyTitle}
+                      description={t.businessUnderstanding.modules.emptyDescription}
+                    />
+                  ) : (
+                    moduleTraceability.map((item) => (
+                      <article
+                        key={item.module.id}
+                        className="rounded-2xl border border-slate-900/10 bg-slate-50 p-4"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <h4 className="text-base font-black text-slate-950">
+                            {item.module.name}
+                          </h4>
+                          <button
+                            type="button"
+                            className="rounded-lg border border-slate-900/10 bg-white px-3 py-1.5 text-xs font-black text-slate-700"
+                            onClick={() => startEditingModule(item.module)}
+                          >
+                            {t.businessUnderstanding.actions.edit}
+                          </button>
+                        </div>
+                        <p className="mt-2 text-sm leading-6 text-slate-600">
+                          {item.module.description}
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <Badge
+                            label={
+                              t.businessUnderstanding.modules.options.criticality[
+                                item.module.criticality
+                              ]
+                            }
+                          />
+                          <Badge
+                            label={t.businessUnderstanding.modules.options.status[item.module.status]}
+                          />
+                          <Badge
+                            label={`${item.requirementCount} ${t.businessUnderstanding.summaryMetrics.totalRequirements}`}
+                          />
+                          <Badge
+                            label={`${item.businessRuleCount} ${t.businessUnderstanding.summaryMetrics.totalBusinessRules}`}
+                          />
+                        </div>
+                      </article>
+                    ))
+                  )}
+                </div>
+              </section>
+
+              <section className="rounded-2xl border border-slate-900/10 bg-white p-5">
+                <h3 className="text-xl font-black tracking-tight text-slate-950">
+                  {t.businessUnderstanding.requirements.title}
+                </h3>
+                <form onSubmit={handleRequirementSubmit} className="mt-4 grid gap-3">
+                  <p className="text-sm font-black text-slate-700">
+                    {editingRequirementId
+                      ? t.businessUnderstanding.requirements.editTitle
+                      : t.businessUnderstanding.requirements.createTitle}
+                  </p>
+                  <ProjectSelect
+                    label={t.businessUnderstanding.requirements.fields.moduleId}
+                    value={activeRequirementModuleId}
+                    options={projectModules.map((module) => module.id)}
+                    labels={Object.fromEntries(
+                      projectModules.map((module) => [module.id, module.name]),
+                    )}
+                    onChange={(value) =>
+                      setRequirementFormState((current) => ({ ...current, moduleId: value }))
+                    }
+                  />
+                  <label className="grid gap-2 text-sm font-bold text-slate-700">
+                    {t.businessUnderstanding.requirements.fields.title}
+                    <input
+                      className="rounded-xl border border-slate-900/10 bg-white px-3 py-2 font-medium outline-none focus:border-teal-600"
+                      placeholder={t.businessUnderstanding.requirements.placeholders.title}
+                      value={requirementFormState.title}
+                      onChange={(event) =>
+                        setRequirementFormState((current) => ({
+                          ...current,
+                          title: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+                  <label className="grid gap-2 text-sm font-bold text-slate-700">
+                    {t.businessUnderstanding.requirements.fields.description}
+                    <textarea
+                      className="min-h-24 rounded-xl border border-slate-900/10 bg-white px-3 py-2 font-medium outline-none focus:border-teal-600"
+                      placeholder={t.businessUnderstanding.requirements.placeholders.description}
+                      value={requirementFormState.description}
+                      onChange={(event) =>
+                        setRequirementFormState((current) => ({
+                          ...current,
+                          description: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+                  <ProjectSelect
+                    label={t.businessUnderstanding.requirements.fields.source}
+                    value={requirementFormState.source}
+                    options={requirementSources}
+                    labels={t.businessUnderstanding.requirements.options.source}
+                    onChange={(value) =>
+                      setRequirementFormState((current) => ({ ...current, source: value }))
+                    }
+                  />
+                  <ProjectSelect
+                    label={t.businessUnderstanding.requirements.fields.status}
+                    value={requirementFormState.status}
+                    options={requirementStatuses}
+                    labels={t.businessUnderstanding.requirements.options.status}
+                    onChange={(value) =>
+                      setRequirementFormState((current) => ({ ...current, status: value }))
+                    }
+                  />
+                  <label className="flex items-center gap-2 text-sm font-bold text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={requirementFormState.aiGenerated}
+                      onChange={(event) =>
+                        setRequirementFormState((current) => ({
+                          ...current,
+                          aiGenerated: event.target.checked,
+                        }))
+                      }
+                    />
+                    {t.businessUnderstanding.requirements.fields.aiGenerated}
+                  </label>
+                  <label className="grid gap-2 text-sm font-bold text-slate-700">
+                    {t.businessUnderstanding.requirements.fields.reviewedBy}
+                    <input
+                      className="rounded-xl border border-slate-900/10 bg-white px-3 py-2 font-medium outline-none focus:border-teal-600"
+                      placeholder={t.businessUnderstanding.requirements.placeholders.reviewedBy}
+                      value={requirementFormState.reviewedBy}
+                      onChange={(event) =>
+                        setRequirementFormState((current) => ({
+                          ...current,
+                          reviewedBy: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+                  {requirementValidationError ? (
+                    <ValidationMessage message={t.businessUnderstanding.validationError} />
+                  ) : null}
+                  <FormActions
+                    isEditing={Boolean(editingRequirementId)}
+                    createLabel={t.businessUnderstanding.actions.create}
+                    updateLabel={t.businessUnderstanding.actions.update}
+                    cancelLabel={t.businessUnderstanding.actions.cancel}
+                    onCancel={resetRequirementForm}
+                  />
+                </form>
+
+                <div className="mt-5 grid gap-3">
+                  {projectRequirements.length === 0 ? (
+                    <EmptyState
+                      title={t.businessUnderstanding.requirements.emptyTitle}
+                      description={t.businessUnderstanding.requirements.emptyDescription}
+                    />
+                  ) : (
+                    projectRequirements.map((requirement) => {
+                      const linkedModule = projectModules.find(
+                        (module) => module.id === requirement.moduleId,
+                      );
+
+                      return (
+                        <article
+                          key={requirement.id}
+                          className="rounded-2xl border border-slate-900/10 bg-slate-50 p-4"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <h4 className="text-base font-black text-slate-950">
+                              {requirement.title}
+                            </h4>
+                            <button
+                              type="button"
+                              className="rounded-lg border border-slate-900/10 bg-white px-3 py-1.5 text-xs font-black text-slate-700"
+                              onClick={() => startEditingRequirement(requirement)}
+                            >
+                              {t.businessUnderstanding.actions.edit}
+                            </button>
+                          </div>
+                          <p className="mt-2 text-sm leading-6 text-slate-600">
+                            {requirement.description}
+                          </p>
+                          <p className="mt-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                            {t.businessUnderstanding.requirements.moduleLabel}:{" "}
+                            {linkedModule?.name ?? requirement.moduleId}
+                          </p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <Badge
+                              label={
+                                t.businessUnderstanding.requirements.options.source[
+                                  requirement.source
+                                ]
+                              }
+                            />
+                            <Badge
+                              label={
+                                t.businessUnderstanding.requirements.options.status[
+                                  requirement.status
+                                ]
+                              }
+                            />
+                            <Badge
+                              label={
+                                requirement.aiGenerated
+                                  ? t.businessUnderstanding.badges.aiGenerated
+                                  : t.businessUnderstanding.badges.humanCreated
+                              }
+                            />
+                          </div>
+                        </article>
+                      );
+                    })
+                  )}
+                </div>
+              </section>
+
+              <section className="rounded-2xl border border-slate-900/10 bg-white p-5">
+                <h3 className="text-xl font-black tracking-tight text-slate-950">
+                  {t.businessUnderstanding.businessRules.title}
+                </h3>
+                <form onSubmit={handleBusinessRuleSubmit} className="mt-4 grid gap-3">
+                  <p className="text-sm font-black text-slate-700">
+                    {editingBusinessRuleId
+                      ? t.businessUnderstanding.businessRules.editTitle
+                      : t.businessUnderstanding.businessRules.createTitle}
+                  </p>
+                  <ProjectSelect
+                    label={t.businessUnderstanding.businessRules.fields.requirementId}
+                    value={activeBusinessRuleRequirementId}
+                    options={projectRequirements.map((requirement) => requirement.id)}
+                    labels={Object.fromEntries(
+                      projectRequirements.map((requirement) => [
+                        requirement.id,
+                        requirement.title,
+                      ]),
+                    )}
+                    onChange={(value) =>
+                      setBusinessRuleFormState((current) => ({
+                        ...current,
+                        requirementId: value,
+                      }))
+                    }
+                  />
+                  <label className="grid gap-2 text-sm font-bold text-slate-700">
+                    {t.businessUnderstanding.businessRules.fields.title}
+                    <input
+                      className="rounded-xl border border-slate-900/10 bg-white px-3 py-2 font-medium outline-none focus:border-teal-600"
+                      placeholder={t.businessUnderstanding.businessRules.placeholders.title}
+                      value={businessRuleFormState.title}
+                      onChange={(event) =>
+                        setBusinessRuleFormState((current) => ({
+                          ...current,
+                          title: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+                  <label className="grid gap-2 text-sm font-bold text-slate-700">
+                    {t.businessUnderstanding.businessRules.fields.ruleText}
+                    <textarea
+                      className="min-h-24 rounded-xl border border-slate-900/10 bg-white px-3 py-2 font-medium outline-none focus:border-teal-600"
+                      placeholder={t.businessUnderstanding.businessRules.placeholders.ruleText}
+                      value={businessRuleFormState.ruleText}
+                      onChange={(event) =>
+                        setBusinessRuleFormState((current) => ({
+                          ...current,
+                          ruleText: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+                  <ProjectSelect
+                    label={t.businessUnderstanding.businessRules.fields.priority}
+                    value={businessRuleFormState.priority}
+                    options={businessRulePriorities}
+                    labels={t.businessUnderstanding.businessRules.options.priority}
+                    onChange={(value) =>
+                      setBusinessRuleFormState((current) => ({ ...current, priority: value }))
+                    }
+                  />
+                  <ProjectSelect
+                    label={t.businessUnderstanding.businessRules.fields.status}
+                    value={businessRuleFormState.status}
+                    options={businessRuleStatuses}
+                    labels={t.businessUnderstanding.businessRules.options.status}
+                    onChange={(value) =>
+                      setBusinessRuleFormState((current) => ({ ...current, status: value }))
+                    }
+                  />
+                  <label className="flex items-center gap-2 text-sm font-bold text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={businessRuleFormState.aiGenerated}
+                      onChange={(event) =>
+                        setBusinessRuleFormState((current) => ({
+                          ...current,
+                          aiGenerated: event.target.checked,
+                        }))
+                      }
+                    />
+                    {t.businessUnderstanding.businessRules.fields.aiGenerated}
+                  </label>
+                  <label className="grid gap-2 text-sm font-bold text-slate-700">
+                    {t.businessUnderstanding.businessRules.fields.reviewedBy}
+                    <input
+                      className="rounded-xl border border-slate-900/10 bg-white px-3 py-2 font-medium outline-none focus:border-teal-600"
+                      placeholder={t.businessUnderstanding.businessRules.placeholders.reviewedBy}
+                      value={businessRuleFormState.reviewedBy}
+                      onChange={(event) =>
+                        setBusinessRuleFormState((current) => ({
+                          ...current,
+                          reviewedBy: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+                  {businessRuleValidationError ? (
+                    <ValidationMessage message={t.businessUnderstanding.validationError} />
+                  ) : null}
+                  <FormActions
+                    isEditing={Boolean(editingBusinessRuleId)}
+                    createLabel={t.businessUnderstanding.actions.create}
+                    updateLabel={t.businessUnderstanding.actions.update}
+                    cancelLabel={t.businessUnderstanding.actions.cancel}
+                    onCancel={resetBusinessRuleForm}
+                  />
+                </form>
+
+                <div className="mt-5 grid gap-3">
+                  {projectBusinessRules.length === 0 ? (
+                    <EmptyState
+                      title={t.businessUnderstanding.businessRules.emptyTitle}
+                      description={t.businessUnderstanding.businessRules.emptyDescription}
+                    />
+                  ) : (
+                    projectBusinessRules.map((rule) => {
+                      const linkedRequirement = projectRequirements.find(
+                        (requirement) => requirement.id === rule.requirementId,
+                      );
+
+                      return (
+                        <article
+                          key={rule.id}
+                          className="rounded-2xl border border-slate-900/10 bg-slate-50 p-4"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <h4 className="text-base font-black text-slate-950">{rule.title}</h4>
+                            <button
+                              type="button"
+                              className="rounded-lg border border-slate-900/10 bg-white px-3 py-1.5 text-xs font-black text-slate-700"
+                              onClick={() => startEditingBusinessRule(rule)}
+                            >
+                              {t.businessUnderstanding.actions.edit}
+                            </button>
+                          </div>
+                          <p className="mt-2 text-sm leading-6 text-slate-600">{rule.ruleText}</p>
+                          <p className="mt-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                            {t.businessUnderstanding.businessRules.requirementLabel}:{" "}
+                            {linkedRequirement?.title ?? rule.requirementId}
+                          </p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <Badge
+                              label={
+                                t.businessUnderstanding.businessRules.options.priority[
+                                  rule.priority
+                                ]
+                              }
+                            />
+                            <Badge
+                              label={
+                                t.businessUnderstanding.businessRules.options.status[rule.status]
+                              }
+                            />
+                            <Badge
+                              label={
+                                rule.aiGenerated
+                                  ? t.businessUnderstanding.badges.aiGenerated
+                                  : t.businessUnderstanding.badges.humanCreated
+                              }
+                            />
+                          </div>
+                        </article>
+                      );
+                    })
+                  )}
+                </div>
+              </section>
+            </div>
+          </section>
+
           <section className="grid gap-6 2xl:grid-cols-[1.2fr_0.8fr]">
             <div className="rounded-[1.5rem] border border-slate-900/10 bg-slate-950 p-6 text-white shadow-xl shadow-slate-900/15">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -587,7 +1459,7 @@ type ProjectSelectProps<T extends string> = {
   label: string;
   value: T;
   options: readonly T[];
-  labels: Record<T, string>;
+  labels: Record<string, string>;
   onChange: (value: T) => void;
 };
 
@@ -622,5 +1494,73 @@ function ProjectMeta({ label, value }: { label: string; value: string }) {
       <span className="font-black text-slate-950">{label}: </span>
       {value}
     </p>
+  );
+}
+
+function SummaryMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <article className="rounded-2xl border border-slate-900/10 bg-white p-4">
+      <p className="text-3xl font-black tracking-tight text-slate-950">{value}</p>
+      <p className="mt-1 text-xs font-bold uppercase tracking-wide text-slate-500">{label}</p>
+    </article>
+  );
+}
+
+function Badge({ label }: { label: string }) {
+  return (
+    <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-700 ring-1 ring-slate-900/10">
+      {label}
+    </span>
+  );
+}
+
+function EmptyState({ title, description }: { title: string; description: string }) {
+  return (
+    <section className="rounded-2xl border border-dashed border-slate-300 bg-white p-4">
+      <h4 className="text-sm font-black text-slate-950">{title}</h4>
+      <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+    </section>
+  );
+}
+
+function ValidationMessage({ message }: { message: string }) {
+  return (
+    <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-800">
+      {message}
+    </p>
+  );
+}
+
+function FormActions({
+  isEditing,
+  createLabel,
+  updateLabel,
+  cancelLabel,
+  onCancel,
+}: {
+  isEditing: boolean;
+  createLabel: string;
+  updateLabel: string;
+  cancelLabel: string;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-3">
+      <button
+        type="submit"
+        className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-black text-white transition hover:bg-teal-800"
+      >
+        {isEditing ? updateLabel : createLabel}
+      </button>
+      {isEditing ? (
+        <button
+          type="button"
+          className="rounded-xl border border-slate-900/10 bg-white px-4 py-2 text-sm font-black text-slate-700 transition hover:border-slate-400"
+          onClick={onCancel}
+        >
+          {cancelLabel}
+        </button>
+      ) : null}
+    </div>
   );
 }

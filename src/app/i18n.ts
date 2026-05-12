@@ -1,4 +1,12 @@
 import type {
+  BusinessRulePriority,
+  BusinessRuleStatus,
+  ModuleCriticality,
+  ModuleStatus,
+  RequirementSource,
+  RequirementStatus,
+} from "@/lib/business-understanding/types";
+import type {
   ProjectStatus,
   ProjectType,
   QaMaturity,
@@ -90,6 +98,109 @@ type ProjectCopy = {
   };
 };
 
+type BusinessUnderstandingCopy = {
+  eyebrow: string;
+  title: string;
+  description: string;
+  persistenceNote: string;
+  workflowLabel: string;
+  projectSelectLabel: string;
+  summaryTitle: string;
+  summaryMetrics: {
+    totalModules: string;
+    totalRequirements: string;
+    totalBusinessRules: string;
+    criticalModules: string;
+    requirementsNeedingReview: string;
+    businessRulesNeedingReview: string;
+  };
+  modules: {
+    title: string;
+    createTitle: string;
+    editTitle: string;
+    emptyTitle: string;
+    emptyDescription: string;
+    fields: {
+      name: string;
+      description: string;
+      criticality: string;
+      status: string;
+    };
+    placeholders: {
+      name: string;
+      description: string;
+    };
+    options: {
+      criticality: Record<ModuleCriticality, string>;
+      status: Record<ModuleStatus, string>;
+    };
+  };
+  requirements: {
+    title: string;
+    createTitle: string;
+    editTitle: string;
+    emptyTitle: string;
+    emptyDescription: string;
+    moduleLabel: string;
+    fields: {
+      moduleId: string;
+      title: string;
+      description: string;
+      source: string;
+      status: string;
+      aiGenerated: string;
+      reviewedBy: string;
+    };
+    placeholders: {
+      title: string;
+      description: string;
+      reviewedBy: string;
+    };
+    options: {
+      source: Record<RequirementSource, string>;
+      status: Record<RequirementStatus, string>;
+    };
+  };
+  businessRules: {
+    title: string;
+    createTitle: string;
+    editTitle: string;
+    emptyTitle: string;
+    emptyDescription: string;
+    requirementLabel: string;
+    ruleTextLabel: string;
+    fields: {
+      requirementId: string;
+      title: string;
+      ruleText: string;
+      priority: string;
+      status: string;
+      aiGenerated: string;
+      reviewedBy: string;
+    };
+    placeholders: {
+      title: string;
+      ruleText: string;
+      reviewedBy: string;
+    };
+    options: {
+      priority: Record<BusinessRulePriority, string>;
+      status: Record<BusinessRuleStatus, string>;
+    };
+  };
+  badges: {
+    aiGenerated: string;
+    humanCreated: string;
+  };
+  actions: {
+    create: string;
+    update: string;
+    cancel: string;
+    edit: string;
+  };
+  validationError: string;
+};
+
 type Translation = {
   languageSelector: {
     label: string;
@@ -121,6 +232,7 @@ type Translation = {
   qualitySignals: QualitySignal[];
   pillarCards: PillarCard[];
   projects: ProjectCopy;
+  businessUnderstanding: BusinessUnderstandingCopy;
   applicationSections: {
     eyebrow: string;
     title: string;
@@ -289,6 +401,141 @@ export const translations: Record<Locale, Translation> = {
           archived: "Arquivado",
         },
       },
+    },
+    businessUnderstanding: {
+      eyebrow: "Entendimento do negócio",
+      title: "Mapeie o produto antes de desenhar testes.",
+      description:
+        "Organize módulos, requisitos e regras de negócio em um fluxo rastreável para transformar contexto de produto em artefatos de QA.",
+      persistenceNote:
+        "Dados locais de demonstração via localStorage. Sem banco real, IA real, cobrança ou dedução de créditos.",
+      workflowLabel: "Projeto -> Módulo -> Requisito -> Regra de negócio",
+      projectSelectLabel: "Projeto em análise",
+      summaryTitle: "Resumo de rastreabilidade",
+      summaryMetrics: {
+        totalModules: "Módulos",
+        totalRequirements: "Requisitos",
+        totalBusinessRules: "Regras",
+        criticalModules: "Módulos críticos",
+        requirementsNeedingReview: "Requisitos a revisar",
+        businessRulesNeedingReview: "Regras a revisar",
+      },
+      modules: {
+        title: "Product Modules",
+        createTitle: "Novo módulo",
+        editTitle: "Editar módulo",
+        emptyTitle: "Nenhum módulo neste projeto",
+        emptyDescription: "Crie um módulo para representar uma área funcional ou fluxo do produto.",
+        fields: {
+          name: "Nome do módulo",
+          description: "Descrição QA",
+          criticality: "Criticidade",
+          status: "Status",
+        },
+        placeholders: {
+          name: "Ex.: Checkout, autenticação, dashboard",
+          description: "O que existe nesta área e por que ela importa para QA.",
+        },
+        options: {
+          criticality: {
+            low: "Baixa",
+            medium: "Média",
+            high: "Alta",
+            critical: "Crítica",
+          },
+          status: {
+            active: "Ativo",
+            deprecated: "Depreciado",
+            planned: "Planejado",
+          },
+        },
+      },
+      requirements: {
+        title: "Requirements",
+        createTitle: "Novo requisito",
+        editTitle: "Editar requisito",
+        emptyTitle: "Nenhum requisito para os módulos selecionados",
+        emptyDescription: "Crie requisitos para declarar o que o produto precisa entregar.",
+        moduleLabel: "Módulo",
+        fields: {
+          moduleId: "Módulo vinculado",
+          title: "Título do requisito",
+          description: "Descrição",
+          source: "Fonte",
+          status: "Status",
+          aiGenerated: "Rascunho assistido por IA",
+          reviewedBy: "Revisado por",
+        },
+        placeholders: {
+          title: "Ex.: Usuário deve recuperar senha com segurança",
+          description: "Contexto, regra esperada e critério de entendimento.",
+          reviewedBy: "Nome ou ID do revisor humano",
+        },
+        options: {
+          source: {
+            user_input: "Entrada do usuário",
+            documentation: "Documentação",
+            stakeholder: "Stakeholder",
+            ai_draft: "Rascunho de IA",
+            imported: "Importado",
+          },
+          status: {
+            draft: "Rascunho",
+            active: "Ativo",
+            needs_review: "Precisa revisão",
+            archived: "Arquivado",
+          },
+        },
+      },
+      businessRules: {
+        title: "Business Rules",
+        createTitle: "Nova regra de negócio",
+        editTitle: "Editar regra de negócio",
+        emptyTitle: "Nenhuma regra vinculada aos requisitos",
+        emptyDescription: "Crie regras para transformar requisitos em comportamento validável.",
+        requirementLabel: "Requisito",
+        ruleTextLabel: "Regra",
+        fields: {
+          requirementId: "Requisito vinculado",
+          title: "Título da regra",
+          ruleText: "Texto da regra",
+          priority: "Prioridade",
+          status: "Status",
+          aiGenerated: "Rascunho assistido por IA",
+          reviewedBy: "Revisado por",
+        },
+        placeholders: {
+          title: "Ex.: E-mail é obrigatório para cadastro",
+          ruleText: "Descreva a regra de negócio que deve ser validada.",
+          reviewedBy: "Nome ou ID do revisor humano",
+        },
+        options: {
+          priority: {
+            low: "Baixa",
+            medium: "Média",
+            high: "Alta",
+            critical: "Crítica",
+          },
+          status: {
+            draft: "Rascunho",
+            active: "Ativo",
+            needs_review: "Precisa revisão",
+            archived: "Arquivado",
+          },
+        },
+      },
+      badges: {
+        aiGenerated: "IA assistida",
+        humanCreated: "Humano",
+      },
+      actions: {
+        create: "Criar",
+        update: "Salvar alterações",
+        cancel: "Cancelar edição",
+        edit: "Editar",
+      },
+      validationError:
+        "Revise os campos obrigatórios e use apenas valores suportados pelo modelo local.",
     },
     applicationSections: {
       eyebrow: "Seções da aplicação",
@@ -512,6 +759,141 @@ export const translations: Record<Locale, Translation> = {
         },
       },
     },
+    businessUnderstanding: {
+      eyebrow: "Business understanding",
+      title: "Map the product before designing tests.",
+      description:
+        "Organize modules, requirements, and business rules in a traceable flow that turns product context into QA artifacts.",
+      persistenceNote:
+        "Local demo data through localStorage. No real database, real AI, billing, or credit deduction.",
+      workflowLabel: "Project -> Module -> Requirement -> Business Rule",
+      projectSelectLabel: "Project under analysis",
+      summaryTitle: "Traceability summary",
+      summaryMetrics: {
+        totalModules: "Modules",
+        totalRequirements: "Requirements",
+        totalBusinessRules: "Rules",
+        criticalModules: "Critical modules",
+        requirementsNeedingReview: "Requirements to review",
+        businessRulesNeedingReview: "Rules to review",
+      },
+      modules: {
+        title: "Product Modules",
+        createTitle: "New module",
+        editTitle: "Edit module",
+        emptyTitle: "No modules in this project",
+        emptyDescription: "Create a module to represent a product area or functional flow.",
+        fields: {
+          name: "Module name",
+          description: "QA description",
+          criticality: "Criticality",
+          status: "Status",
+        },
+        placeholders: {
+          name: "Example: Checkout, authentication, dashboard",
+          description: "What exists in this area and why it matters for QA.",
+        },
+        options: {
+          criticality: {
+            low: "Low",
+            medium: "Medium",
+            high: "High",
+            critical: "Critical",
+          },
+          status: {
+            active: "Active",
+            deprecated: "Deprecated",
+            planned: "Planned",
+          },
+        },
+      },
+      requirements: {
+        title: "Requirements",
+        createTitle: "New requirement",
+        editTitle: "Edit requirement",
+        emptyTitle: "No requirements for the selected modules",
+        emptyDescription: "Create requirements to state what the product needs to deliver.",
+        moduleLabel: "Module",
+        fields: {
+          moduleId: "Linked module",
+          title: "Requirement title",
+          description: "Description",
+          source: "Source",
+          status: "Status",
+          aiGenerated: "AI-assisted draft",
+          reviewedBy: "Reviewed by",
+        },
+        placeholders: {
+          title: "Example: User should recover password safely",
+          description: "Context, expected rule, and understanding criteria.",
+          reviewedBy: "Human reviewer name or ID",
+        },
+        options: {
+          source: {
+            user_input: "User input",
+            documentation: "Documentation",
+            stakeholder: "Stakeholder",
+            ai_draft: "AI draft",
+            imported: "Imported",
+          },
+          status: {
+            draft: "Draft",
+            active: "Active",
+            needs_review: "Needs review",
+            archived: "Archived",
+          },
+        },
+      },
+      businessRules: {
+        title: "Business Rules",
+        createTitle: "New business rule",
+        editTitle: "Edit business rule",
+        emptyTitle: "No rules linked to requirements",
+        emptyDescription: "Create rules to turn requirements into behavior that can be validated.",
+        requirementLabel: "Requirement",
+        ruleTextLabel: "Rule",
+        fields: {
+          requirementId: "Linked requirement",
+          title: "Rule title",
+          ruleText: "Rule text",
+          priority: "Priority",
+          status: "Status",
+          aiGenerated: "AI-assisted draft",
+          reviewedBy: "Reviewed by",
+        },
+        placeholders: {
+          title: "Example: Email is required for sign-up",
+          ruleText: "Describe the business rule that should be validated.",
+          reviewedBy: "Human reviewer name or ID",
+        },
+        options: {
+          priority: {
+            low: "Low",
+            medium: "Medium",
+            high: "High",
+            critical: "Critical",
+          },
+          status: {
+            draft: "Draft",
+            active: "Active",
+            needs_review: "Needs review",
+            archived: "Archived",
+          },
+        },
+      },
+      badges: {
+        aiGenerated: "AI-assisted",
+        humanCreated: "Human",
+      },
+      actions: {
+        create: "Create",
+        update: "Save changes",
+        cancel: "Cancel edit",
+        edit: "Edit",
+      },
+      validationError:
+        "Review the required fields and use only values supported by the local model.",
+    },
     applicationSections: {
       eyebrow: "Application sections",
       title: "Navigable skeleton for the first SaaS shell.",
@@ -733,6 +1115,141 @@ export const translations: Record<Locale, Translation> = {
           archived: "Archivado",
         },
       },
+    },
+    businessUnderstanding: {
+      eyebrow: "Entendimiento del negocio",
+      title: "Mapea el producto antes de diseñar pruebas.",
+      description:
+        "Organiza módulos, requisitos y reglas de negocio en un flujo trazable para convertir contexto de producto en artefactos de QA.",
+      persistenceNote:
+        "Datos demo locales con localStorage. Sin base de datos real, IA real, cobro ni deducción de créditos.",
+      workflowLabel: "Proyecto -> Módulo -> Requisito -> Regla de negocio",
+      projectSelectLabel: "Proyecto en análisis",
+      summaryTitle: "Resumen de trazabilidad",
+      summaryMetrics: {
+        totalModules: "Módulos",
+        totalRequirements: "Requisitos",
+        totalBusinessRules: "Reglas",
+        criticalModules: "Módulos críticos",
+        requirementsNeedingReview: "Requisitos a revisar",
+        businessRulesNeedingReview: "Reglas a revisar",
+      },
+      modules: {
+        title: "Product Modules",
+        createTitle: "Nuevo módulo",
+        editTitle: "Editar módulo",
+        emptyTitle: "Sin módulos en este proyecto",
+        emptyDescription: "Crea un módulo para representar un área o flujo funcional del producto.",
+        fields: {
+          name: "Nombre del módulo",
+          description: "Descripción QA",
+          criticality: "Criticidad",
+          status: "Status",
+        },
+        placeholders: {
+          name: "Ej.: Checkout, autenticación, dashboard",
+          description: "Qué existe en esta área y por qué importa para QA.",
+        },
+        options: {
+          criticality: {
+            low: "Baja",
+            medium: "Media",
+            high: "Alta",
+            critical: "Crítica",
+          },
+          status: {
+            active: "Activo",
+            deprecated: "Deprecado",
+            planned: "Planeado",
+          },
+        },
+      },
+      requirements: {
+        title: "Requirements",
+        createTitle: "Nuevo requisito",
+        editTitle: "Editar requisito",
+        emptyTitle: "Sin requisitos para los módulos seleccionados",
+        emptyDescription: "Crea requisitos para declarar lo que el producto necesita entregar.",
+        moduleLabel: "Módulo",
+        fields: {
+          moduleId: "Módulo vinculado",
+          title: "Título del requisito",
+          description: "Descripción",
+          source: "Fuente",
+          status: "Status",
+          aiGenerated: "Borrador asistido por IA",
+          reviewedBy: "Revisado por",
+        },
+        placeholders: {
+          title: "Ej.: Usuario debe recuperar contraseña de forma segura",
+          description: "Contexto, regla esperada y criterio de entendimiento.",
+          reviewedBy: "Nombre o ID del revisor humano",
+        },
+        options: {
+          source: {
+            user_input: "Entrada del usuario",
+            documentation: "Documentación",
+            stakeholder: "Stakeholder",
+            ai_draft: "Borrador de IA",
+            imported: "Importado",
+          },
+          status: {
+            draft: "Borrador",
+            active: "Activo",
+            needs_review: "Necesita revisión",
+            archived: "Archivado",
+          },
+        },
+      },
+      businessRules: {
+        title: "Business Rules",
+        createTitle: "Nueva regla de negocio",
+        editTitle: "Editar regla de negocio",
+        emptyTitle: "Sin reglas vinculadas a requisitos",
+        emptyDescription: "Crea reglas para convertir requisitos en comportamiento validable.",
+        requirementLabel: "Requisito",
+        ruleTextLabel: "Regla",
+        fields: {
+          requirementId: "Requisito vinculado",
+          title: "Título de la regla",
+          ruleText: "Texto de la regla",
+          priority: "Prioridad",
+          status: "Status",
+          aiGenerated: "Borrador asistido por IA",
+          reviewedBy: "Revisado por",
+        },
+        placeholders: {
+          title: "Ej.: E-mail es obligatorio para registro",
+          ruleText: "Describe la regla de negocio que debe validarse.",
+          reviewedBy: "Nombre o ID del revisor humano",
+        },
+        options: {
+          priority: {
+            low: "Baja",
+            medium: "Media",
+            high: "Alta",
+            critical: "Crítica",
+          },
+          status: {
+            draft: "Borrador",
+            active: "Activo",
+            needs_review: "Necesita revisión",
+            archived: "Archivado",
+          },
+        },
+      },
+      badges: {
+        aiGenerated: "IA asistida",
+        humanCreated: "Humano",
+      },
+      actions: {
+        create: "Crear",
+        update: "Guardar cambios",
+        cancel: "Cancelar edición",
+        edit: "Editar",
+      },
+      validationError:
+        "Revisa los campos obligatorios y usa solo valores soportados por el modelo local.",
     },
     applicationSections: {
       eyebrow: "Secciones de la aplicación",
