@@ -13,6 +13,9 @@ import {
   testCaseAutomationStatuses,
   testCasePriorities,
   testCaseStatuses,
+  testSuitePriorities,
+  testSuiteStatuses,
+  testSuiteTypes,
   testLevels,
   type BusinessRuleScenarioTraceability,
   type ScenarioDesignSummary,
@@ -27,10 +30,18 @@ import {
   type TestCaseInput,
   type TestCasePriority,
   type TestCaseStatus,
+  type TestCaseSuiteTraceability,
   type TestCaseTraceability,
   type TestLevel,
   type TestScenario,
   type TestScenarioInput,
+  type TestSuite,
+  type TestSuiteInput,
+  type TestSuitePriority,
+  type TestSuiteStatus,
+  type TestSuiteSummary,
+  type TestSuiteTraceability,
+  type TestSuiteType,
 } from "./types";
 
 const demoTimestamp = "2026-05-12T11:00:00.000Z";
@@ -209,6 +220,68 @@ export const demoTestCases: TestCase[] = [
   },
 ];
 
+export const demoTestSuites: TestSuite[] = [
+  {
+    id: "test_suite_demo_landing_smoke",
+    projectId: "project_demo_landing",
+    name: "Smoke - Landing page",
+    description: "Suite curta para validar captura de lead e feedback essencial antes de campanha.",
+    suiteType: "smoke",
+    status: "ready",
+    priority: "high",
+    testCaseIds: [
+      "test_case_demo_landing_valid_email_submission",
+      "test_case_demo_landing_invalid_email_rejected",
+    ],
+    owner: "user_demo_qa_lead",
+    createdAt: demoTimestamp,
+    updatedAt: demoTimestamp,
+  },
+  {
+    id: "test_suite_demo_saas_auth_regression",
+    projectId: "project_demo_saas",
+    name: "Regressao - Autenticacao",
+    description: "Suite deterministica para proteger a fronteira de workspace no portal SaaS.",
+    suiteType: "regression",
+    status: "ready",
+    priority: "critical",
+    testCaseIds: ["test_case_demo_saas_workspace_boundary_regression"],
+    owner: "user_demo_qa_lead",
+    createdAt: demoTimestamp,
+    updatedAt: demoTimestamp,
+  },
+  {
+    id: "test_suite_demo_landing_release_main_flow",
+    projectId: "project_demo_landing",
+    name: "Release - Fluxo principal",
+    description: "Suite de prontidao para revisar conversao e responsividade antes de publicar.",
+    suiteType: "release",
+    status: "needs_review",
+    priority: "critical",
+    testCaseIds: [
+      "test_case_demo_landing_valid_email_submission",
+      "test_case_demo_landing_invalid_email_rejected",
+      "test_case_demo_landing_mobile_cta_narrow_screen",
+    ],
+    owner: "user_demo_qa_lead",
+    createdAt: demoTimestamp,
+    updatedAt: demoTimestamp,
+  },
+  {
+    id: "test_suite_demo_landing_mobile_feature",
+    projectId: "project_demo_landing",
+    name: "Funcional - Conversao mobile",
+    description: "Suite focada no comportamento do CTA e conversao em tela mobile estreita.",
+    suiteType: "feature",
+    status: "draft",
+    priority: "medium",
+    testCaseIds: ["test_case_demo_landing_mobile_cta_narrow_screen"],
+    owner: "user_demo_qa_lead",
+    createdAt: demoTimestamp,
+    updatedAt: demoTimestamp,
+  },
+];
+
 export function isScenarioType(value: string): value is ScenarioType {
   return scenarioTypes.includes(value as ScenarioType);
 }
@@ -235,6 +308,18 @@ export function isTestCaseStatus(value: string): value is TestCaseStatus {
 
 export function isTestCaseAutomationStatus(value: string): value is TestCaseAutomationStatus {
   return testCaseAutomationStatuses.includes(value as TestCaseAutomationStatus);
+}
+
+export function isTestSuiteType(value: string): value is TestSuiteType {
+  return testSuiteTypes.includes(value as TestSuiteType);
+}
+
+export function isTestSuiteStatus(value: string): value is TestSuiteStatus {
+  return testSuiteStatuses.includes(value as TestSuiteStatus);
+}
+
+export function isTestSuitePriority(value: string): value is TestSuitePriority {
+  return testSuitePriorities.includes(value as TestSuitePriority);
 }
 
 export function validateTestScenarioInput(input: TestScenarioInput): string[] {
@@ -344,6 +429,40 @@ export function validateTestCaseInput(input: TestCaseInput): string[] {
   return errors;
 }
 
+export function validateTestSuiteInput(input: TestSuiteInput): string[] {
+  const errors: string[] = [];
+
+  if (input.projectId.trim().length === 0) {
+    errors.push("test_suite_project_required");
+  }
+
+  if (input.name.trim().length < 2) {
+    errors.push("test_suite_name_required");
+  }
+
+  if (input.suiteType !== undefined && !isTestSuiteType(input.suiteType)) {
+    errors.push("invalid_test_suite_type");
+  }
+
+  if (input.status !== undefined && !isTestSuiteStatus(input.status)) {
+    errors.push("invalid_test_suite_status");
+  }
+
+  if (input.priority !== undefined && !isTestSuitePriority(input.priority)) {
+    errors.push("invalid_test_suite_priority");
+  }
+
+  if (input.testCaseIds.length === 0) {
+    errors.push("test_suite_test_cases_required");
+  }
+
+  if (input.testCaseIds.some((testCaseId) => testCaseId.trim().length < 2)) {
+    errors.push("test_suite_test_case_id_required");
+  }
+
+  return errors;
+}
+
 export function listScenariosByProject(
   projectId: string,
   scenarios: TestScenario[] = demoTestScenarios,
@@ -407,6 +526,30 @@ export function listTestCasesByScenario(
   return testCases.filter((testCase) => testCase.scenarioId === scenarioId);
 }
 
+export function listTestSuitesByProject(
+  projectId: string,
+  testSuites: TestSuite[] = demoTestSuites,
+): TestSuite[] {
+  return testSuites.filter((testSuite) => testSuite.projectId === projectId);
+}
+
+export function listTestSuitesByType(
+  projectId: string,
+  suiteType: TestSuiteType,
+  testSuites: TestSuite[] = demoTestSuites,
+): TestSuite[] {
+  return testSuites.filter(
+    (testSuite) => testSuite.projectId === projectId && testSuite.suiteType === suiteType,
+  );
+}
+
+export function listTestSuitesByTestCase(
+  testCaseId: string,
+  testSuites: TestSuite[] = demoTestSuites,
+): TestSuite[] {
+  return testSuites.filter((testSuite) => testSuite.testCaseIds.includes(testCaseId));
+}
+
 export function createTestScenario(input: TestScenarioInput, now = new Date()): TestScenario {
   const errors = validateTestScenarioInput(input);
 
@@ -462,6 +605,30 @@ export function createTestCase(input: TestCaseInput, now = new Date()): TestCase
     automationStatus: input.automationStatus ?? "not_automated",
     aiGenerated: input.aiGenerated ?? false,
     reviewedBy: input.reviewedBy?.trim() ?? "",
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+}
+
+export function createTestSuite(input: TestSuiteInput, now = new Date()): TestSuite {
+  const errors = validateTestSuiteInput(input);
+
+  if (errors.length > 0) {
+    throw new Error(errors.join(","));
+  }
+
+  const timestamp = now.toISOString();
+
+  return {
+    id: `test_suite_${now.getTime()}`,
+    projectId: input.projectId,
+    name: input.name.trim(),
+    description: input.description?.trim() ?? "",
+    suiteType: input.suiteType ?? "feature",
+    status: input.status ?? "draft",
+    priority: input.priority ?? "medium",
+    testCaseIds: input.testCaseIds.map((testCaseId) => testCaseId.trim()),
+    owner: input.owner?.trim() ?? "",
     createdAt: timestamp,
     updatedAt: timestamp,
   };
@@ -533,6 +700,34 @@ export function updateTestCase(
   return nextTestCase;
 }
 
+export function updateTestSuite(
+  testSuite: TestSuite,
+  updates: Partial<TestSuiteInput>,
+  now = new Date(),
+): TestSuite {
+  const nextTestSuite: TestSuite = {
+    ...testSuite,
+    projectId: updates.projectId ?? testSuite.projectId,
+    name: updates.name?.trim() ?? testSuite.name,
+    description: updates.description?.trim() ?? testSuite.description,
+    suiteType: updates.suiteType ?? testSuite.suiteType,
+    status: updates.status ?? testSuite.status,
+    priority: updates.priority ?? testSuite.priority,
+    testCaseIds:
+      updates.testCaseIds?.map((testCaseId) => testCaseId.trim()) ?? testSuite.testCaseIds,
+    owner: updates.owner?.trim() ?? testSuite.owner,
+    updatedAt: now.toISOString(),
+  };
+
+  const errors = validateTestSuiteInput(nextTestSuite);
+
+  if (errors.length > 0) {
+    throw new Error(errors.join(","));
+  }
+
+  return nextTestSuite;
+}
+
 export function countScenariosByBusinessRule(
   businessRuleId: string,
   scenarios: TestScenario[] = demoTestScenarios,
@@ -547,6 +742,20 @@ export function countTestCasesByScenario(
   return listTestCasesByScenario(scenarioId, testCases).length;
 }
 
+export function countTestSuitesByProject(
+  projectId: string,
+  testSuites: TestSuite[] = demoTestSuites,
+): number {
+  return listTestSuitesByProject(projectId, testSuites).length;
+}
+
+export function countTestSuitesByTestCase(
+  testCaseId: string,
+  testSuites: TestSuite[] = demoTestSuites,
+): number {
+  return listTestSuitesByTestCase(testCaseId, testSuites).length;
+}
+
 function createEmptyScenariosByType(): Record<ScenarioType, number> {
   return scenarioTypes.reduce(
     (totals, scenarioType) => ({
@@ -554,6 +763,16 @@ function createEmptyScenariosByType(): Record<ScenarioType, number> {
       [scenarioType]: 0,
     }),
     {} as Record<ScenarioType, number>,
+  );
+}
+
+function createEmptySuitesByType(): Record<TestSuiteType, number> {
+  return testSuiteTypes.reduce(
+    (totals, suiteType) => ({
+      ...totals,
+      [suiteType]: 0,
+    }),
+    {} as Record<TestSuiteType, number>,
   );
 }
 
@@ -618,6 +837,31 @@ export function getTestCaseDesignSummary(
     ).length,
     aiGeneratedTestCases: projectTestCases.filter((testCase) => testCase.aiGenerated).length,
     testCasesByAutomationStatus,
+  };
+}
+
+export function getTestSuiteSummary(
+  projectId: string,
+  testSuites: TestSuite[] = demoTestSuites,
+): TestSuiteSummary {
+  const projectSuites = listTestSuitesByProject(projectId, testSuites);
+  const suitesByType = createEmptySuitesByType();
+  const linkedTestCaseIds = new Set<string>();
+
+  projectSuites.forEach((testSuite) => {
+    suitesByType[testSuite.suiteType] += 1;
+    testSuite.testCaseIds.forEach((testCaseId) => linkedTestCaseIds.add(testCaseId));
+  });
+
+  return {
+    totalSuites: projectSuites.length,
+    readySuites: projectSuites.filter((testSuite) => testSuite.status === "ready").length,
+    suitesNeedingReview: projectSuites.filter((testSuite) => testSuite.status === "needs_review")
+      .length,
+    criticalSuites: projectSuites.filter((testSuite) => testSuite.priority === "critical").length,
+    archivedSuites: projectSuites.filter((testSuite) => testSuite.status === "archived").length,
+    totalLinkedTestCases: linkedTestCaseIds.size,
+    suitesByType,
   };
 }
 
@@ -702,5 +946,68 @@ export function getTestCaseTraceability(
       ? scenarios.find((scenario) => scenario.id === testCase.scenarioId) ?? null
       : null,
     testCase,
+  };
+}
+
+export function getTestSuiteTraceability(
+  testSuiteId: string,
+  testSuites: TestSuite[] = demoTestSuites,
+  testCases: TestCase[] = demoTestCases,
+  scenarios: TestScenario[] = demoTestScenarios,
+  projects: Project[] = demoProjects,
+  modules: ProductModule[] = demoProductModules,
+  requirements: Requirement[] = demoRequirements,
+  businessRules: BusinessRule[] = demoBusinessRules,
+): TestSuiteTraceability {
+  const testSuite = testSuites.find((item) => item.id === testSuiteId) ?? null;
+  const linkedTestCases = testSuite
+    ? testCases.filter((testCase) => testSuite.testCaseIds.includes(testCase.id))
+    : [];
+
+  return {
+    project: testSuite
+      ? projects.find((project) => project.id === testSuite.projectId) ?? null
+      : null,
+    testSuite,
+    testCases: linkedTestCases,
+    testCaseTraceability: linkedTestCases.map((testCase) =>
+      getTestCaseTraceability(
+        testCase.id,
+        testCases,
+        scenarios,
+        projects,
+        modules,
+        requirements,
+        businessRules,
+      ),
+    ),
+  };
+}
+
+export function getTestCaseSuiteTraceability(
+  testCaseId: string,
+  testCases: TestCase[] = demoTestCases,
+  testSuites: TestSuite[] = demoTestSuites,
+  scenarios: TestScenario[] = demoTestScenarios,
+  projects: Project[] = demoProjects,
+  modules: ProductModule[] = demoProductModules,
+  requirements: Requirement[] = demoRequirements,
+  businessRules: BusinessRule[] = demoBusinessRules,
+): TestCaseSuiteTraceability {
+  const testCaseTraceability = getTestCaseTraceability(
+    testCaseId,
+    testCases,
+    scenarios,
+    projects,
+    modules,
+    requirements,
+    businessRules,
+  );
+  const testSuitesForCase = listTestSuitesByTestCase(testCaseId, testSuites);
+
+  return {
+    ...testCaseTraceability,
+    testSuites: testSuitesForCase,
+    suiteCount: testSuitesForCase.length,
   };
 }

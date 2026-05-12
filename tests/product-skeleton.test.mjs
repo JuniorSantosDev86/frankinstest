@@ -886,6 +886,217 @@ test("test case traceability connects project, module, requirement, rule, scenar
   });
 });
 
+test("test suite model values match Block 05A scope", () => {
+  assert.deepEqual(testDesignTypes.testSuiteTypes, [
+    "smoke",
+    "regression",
+    "release",
+    "feature",
+    "exploratory",
+    "api",
+    "mobile",
+    "security",
+    "accessibility",
+    "performance",
+  ]);
+  assert.deepEqual(testDesignTypes.testSuiteStatuses, [
+    "draft",
+    "ready",
+    "needs_review",
+    "archived",
+  ]);
+  assert.deepEqual(testDesignTypes.testSuitePriorities, [
+    "low",
+    "medium",
+    "high",
+    "critical",
+  ]);
+  assert.match(testDesignTypesSource, /TestSuite/);
+  assert.match(testDesignServiceSource, /demoTestSuites/);
+});
+
+test("test suite input validation accepts supported values and rejects invalid values", () => {
+  const validInput = {
+    projectId: "project_demo_landing",
+    name: "Smoke - Landing page",
+    description: "Suite curta para validar captura de lead.",
+    suiteType: "smoke",
+    status: "ready",
+    priority: "high",
+    testCaseIds: [
+      "test_case_demo_landing_valid_email_submission",
+      "test_case_demo_landing_invalid_email_rejected",
+    ],
+    owner: "user_demo_qa_lead",
+  };
+
+  assert.deepEqual(testDesignService.validateTestSuiteInput(validInput), []);
+  assert.equal(testDesignService.isTestSuiteType("release"), true);
+  assert.equal(testDesignService.isTestSuiteType("cycle"), false);
+  assert.equal(testDesignService.isTestSuiteStatus("needs_review"), true);
+  assert.equal(testDesignService.isTestSuitePriority("critical"), true);
+  assert.deepEqual(
+    testDesignService.validateTestSuiteInput({
+      ...validInput,
+      projectId: "",
+      name: "",
+      suiteType: "cycle",
+      status: "done",
+      priority: "urgent",
+      testCaseIds: ["x"],
+    }),
+    [
+      "test_suite_project_required",
+      "test_suite_name_required",
+      "invalid_test_suite_type",
+      "invalid_test_suite_status",
+      "invalid_test_suite_priority",
+      "test_suite_test_case_id_required",
+    ],
+  );
+  assert.deepEqual(
+    testDesignService.validateTestSuiteInput({ ...validInput, testCaseIds: [] }),
+    ["test_suite_test_cases_required"],
+  );
+
+  const testSuite = testDesignService.createTestSuite(
+    validInput,
+    new Date("2026-05-12T12:10:00.000Z"),
+  );
+  assert.equal(testSuite.id, "test_suite_1778587800000");
+  assert.equal(testSuite.suiteType, "smoke");
+  assert.deepEqual(testSuite.testCaseIds, validInput.testCaseIds);
+  assert.equal(testSuite.createdAt, "2026-05-12T12:10:00.000Z");
+});
+
+test("test suite listing helpers filter by project, type, and test case", () => {
+  assert.deepEqual(
+    testDesignService
+      .listTestSuitesByProject("project_demo_landing")
+      .map((testSuite) => testSuite.id)
+      .sort(),
+    [
+      "test_suite_demo_landing_mobile_feature",
+      "test_suite_demo_landing_release_main_flow",
+      "test_suite_demo_landing_smoke",
+    ],
+  );
+  assert.deepEqual(
+    testDesignService
+      .listTestSuitesByType("project_demo_landing", "release")
+      .map((testSuite) => testSuite.id),
+    ["test_suite_demo_landing_release_main_flow"],
+  );
+  assert.deepEqual(
+    testDesignService
+      .listTestSuitesByTestCase("test_case_demo_landing_mobile_cta_narrow_screen")
+      .map((testSuite) => testSuite.suiteType)
+      .sort(),
+    ["feature", "release"],
+  );
+});
+
+test("test suite counts and summary are deterministic", () => {
+  assert.equal(testDesignService.countTestSuitesByProject("project_demo_landing"), 3);
+  assert.equal(
+    testDesignService.countTestSuitesByTestCase(
+      "test_case_demo_landing_valid_email_submission",
+    ),
+    2,
+  );
+
+  assert.deepEqual(testDesignService.getTestSuiteSummary("project_demo_landing"), {
+    totalSuites: 3,
+    readySuites: 1,
+    suitesNeedingReview: 1,
+    criticalSuites: 1,
+    archivedSuites: 0,
+    totalLinkedTestCases: 3,
+    suitesByType: {
+      smoke: 1,
+      regression: 0,
+      release: 1,
+      feature: 1,
+      exploratory: 0,
+      api: 0,
+      mobile: 0,
+      security: 0,
+      accessibility: 0,
+      performance: 0,
+    },
+  });
+
+  assert.deepEqual(testDesignService.getTestSuiteSummary("project_demo_saas"), {
+    totalSuites: 1,
+    readySuites: 1,
+    suitesNeedingReview: 0,
+    criticalSuites: 1,
+    archivedSuites: 0,
+    totalLinkedTestCases: 1,
+    suitesByType: {
+      smoke: 0,
+      regression: 1,
+      release: 0,
+      feature: 0,
+      exploratory: 0,
+      api: 0,
+      mobile: 0,
+      security: 0,
+      accessibility: 0,
+      performance: 0,
+    },
+  });
+});
+
+test("test suite traceability connects project, suite, and linked test cases", () => {
+  const suiteTraceability = testDesignService.getTestSuiteTraceability(
+    "test_suite_demo_landing_smoke",
+  );
+
+  assert.equal(suiteTraceability.project.id, "project_demo_landing");
+  assert.equal(suiteTraceability.testSuite.id, "test_suite_demo_landing_smoke");
+  assert.deepEqual(
+    suiteTraceability.testCases.map((testCase) => testCase.id),
+    [
+      "test_case_demo_landing_valid_email_submission",
+      "test_case_demo_landing_invalid_email_rejected",
+    ],
+  );
+  assert.deepEqual(
+    suiteTraceability.testCaseTraceability.map((traceability) => traceability.businessRule.id),
+    ["rule_demo_landing_email", "rule_demo_landing_email"],
+  );
+
+  const testCaseSuiteTraceability = testDesignService.getTestCaseSuiteTraceability(
+    "test_case_demo_landing_mobile_cta_narrow_screen",
+  );
+
+  assert.equal(testCaseSuiteTraceability.project.id, "project_demo_landing");
+  assert.equal(testCaseSuiteTraceability.module.id, "module_demo_landing_responsive");
+  assert.equal(testCaseSuiteTraceability.requirement.id, "requirement_demo_landing_mobile");
+  assert.equal(testCaseSuiteTraceability.businessRule.id, "rule_demo_landing_mobile_cta");
+  assert.equal(
+    testCaseSuiteTraceability.scenario.id,
+    "scenario_demo_landing_mobile_cta_small_screen",
+  );
+  assert.equal(
+    testCaseSuiteTraceability.testCase.id,
+    "test_case_demo_landing_mobile_cta_narrow_screen",
+  );
+  assert.equal(testCaseSuiteTraceability.suiteCount, 2);
+  assert.deepEqual(
+    testCaseSuiteTraceability.testSuites.map((testSuite) => testSuite.id).sort(),
+    ["test_suite_demo_landing_mobile_feature", "test_suite_demo_landing_release_main_flow"],
+  );
+
+  assert.deepEqual(testDesignService.getTestSuiteTraceability("test_suite_missing"), {
+    project: null,
+    testSuite: null,
+    testCases: [],
+    testCaseTraceability: [],
+  });
+});
+
 test("test scenario UI source exists and exposes the pt-BR section", () => {
   assert.match(pageSource, /TestScenarioSection/);
   assert.match(testScenarioSectionSource, /Cenários de teste/);
