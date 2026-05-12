@@ -89,6 +89,16 @@ export const testCyclePriorities = ["low", "medium", "high", "critical"] as cons
 
 export type TestCyclePriority = (typeof testCyclePriorities)[number];
 
+export const testExecutionStatuses = [
+  "not_run",
+  "passed",
+  "failed",
+  "blocked",
+  "skipped",
+] as const;
+
+export type TestExecutionStatus = (typeof testExecutionStatuses)[number];
+
 export type TestScenario = {
   id: string;
   projectId: string;
@@ -103,6 +113,20 @@ export type TestScenario = {
   testLevel: TestLevel;
   aiGenerated: boolean;
   reviewedBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TestExecution = {
+  id: string;
+  projectId: string;
+  cycleId: string;
+  testSuiteId: string;
+  testCaseId: string;
+  status: TestExecutionStatus;
+  notes: string;
+  executedBy: string;
+  executedAt: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -215,6 +239,17 @@ export type TestCycleInput = {
   plannedEndAt?: string;
 };
 
+export type TestExecutionInput = {
+  projectId: string;
+  cycleId: string;
+  testSuiteId: string;
+  testCaseId: string;
+  status: TestExecutionStatus;
+  notes?: string;
+  executedBy?: string;
+  executedAt?: string;
+};
+
 export type ScenarioDesignSummary = {
   totalScenarios: number;
   readyScenarios: number;
@@ -256,6 +291,24 @@ export type TestCycleSummary = {
   totalLinkedSuites: number;
   cyclesByStatus: Record<TestCycleStatus, number>;
 };
+
+export type TestExecutionSummary = {
+  totalExecutions: number;
+  notRunExecutions: number;
+  passedExecutions: number;
+  failedExecutions: number;
+  blockedExecutions: number;
+  skippedExecutions: number;
+  executedExecutions: number;
+  completionRate: number;
+  passRate: number;
+  executionsByStatus: Record<TestExecutionStatus, number>;
+};
+
+export type TestCycleExecutionSummary = Omit<
+  TestExecutionSummary,
+  "executedExecutions" | "executionsByStatus"
+>;
 
 export type BusinessRuleScenarioTraceability = {
   businessRule: BusinessRule | null;
@@ -318,4 +371,38 @@ export type TestCaseSuiteTraceability = {
   testCase: TestCase | null;
   testSuites: TestSuite[];
   suiteCount: number;
+};
+
+export type TestExecutionTraceability = {
+  project: Project | null;
+  module: ProductModule | null;
+  requirement: Requirement | null;
+  businessRule: BusinessRule | null;
+  scenario: TestScenario | null;
+  testCase: TestCase | null;
+  testSuite: TestSuite | null;
+  testCycle: TestCycle | null;
+  testExecution: TestExecution | null;
+};
+
+export type TestCaseExecutionTraceability = {
+  project: Project | null;
+  module: ProductModule | null;
+  requirement: Requirement | null;
+  businessRule: BusinessRule | null;
+  scenario: TestScenario | null;
+  testCase: TestCase | null;
+  testSuites: TestSuite[];
+  testCycles: TestCycle[];
+  testExecutions: TestExecution[];
+  executionCount: number;
+};
+
+export type CycleExecutionTraceability = {
+  project: Project | null;
+  testCycle: TestCycle | null;
+  testSuites: TestSuite[];
+  testCases: TestCase[];
+  testExecutions: TestExecution[];
+  testExecutionTraceability: TestExecutionTraceability[];
 };

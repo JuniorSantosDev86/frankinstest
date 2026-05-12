@@ -15,10 +15,12 @@ import {
   testCaseStatuses,
   testCyclePriorities,
   testCycleStatuses,
+  testExecutionStatuses,
   testSuitePriorities,
   testSuiteStatuses,
   testSuiteTypes,
   testLevels,
+  type CycleExecutionTraceability,
   type BusinessRuleScenarioTraceability,
   type ScenarioDesignSummary,
   type ScenarioTestCaseTraceability,
@@ -40,6 +42,13 @@ import {
   type TestCycleStatus,
   type TestCycleSummary,
   type TestCycleTraceability,
+  type TestCycleExecutionSummary,
+  type TestExecution,
+  type TestExecutionInput,
+  type TestExecutionStatus,
+  type TestExecutionSummary,
+  type TestExecutionTraceability,
+  type TestCaseExecutionTraceability,
   type TestLevel,
   type TestScenario,
   type TestScenarioInput,
@@ -353,6 +362,74 @@ export const demoTestCycles: TestCycle[] = [
   },
 ];
 
+export const demoTestExecutions: TestExecution[] = [
+  {
+    id: "test_execution_demo_landing_smoke_valid_email_not_run",
+    projectId: "project_demo_landing",
+    cycleId: "test_cycle_demo_landing_smoke_planned",
+    testSuiteId: "test_suite_demo_landing_smoke",
+    testCaseId: "test_case_demo_landing_valid_email_submission",
+    status: "not_run",
+    notes: "Execução ainda não iniciada.",
+    executedBy: "",
+    executedAt: "",
+    createdAt: demoTimestamp,
+    updatedAt: demoTimestamp,
+  },
+  {
+    id: "test_execution_demo_landing_release_valid_email_passed",
+    projectId: "project_demo_landing",
+    cycleId: "test_cycle_demo_landing_release_completed",
+    testSuiteId: "test_suite_demo_landing_smoke",
+    testCaseId: "test_case_demo_landing_valid_email_submission",
+    status: "passed",
+    notes: "Fluxo validado sem divergências visíveis.",
+    executedBy: "user_demo_qa_lead",
+    executedAt: "2026-05-09",
+    createdAt: demoTimestamp,
+    updatedAt: demoTimestamp,
+  },
+  {
+    id: "test_execution_demo_landing_release_invalid_email_failed",
+    projectId: "project_demo_landing",
+    cycleId: "test_cycle_demo_landing_release_completed",
+    testSuiteId: "test_suite_demo_landing_smoke",
+    testCaseId: "test_case_demo_landing_invalid_email_rejected",
+    status: "failed",
+    notes: "Falha observada no feedback de validação.",
+    executedBy: "user_demo_qa_lead",
+    executedAt: "2026-05-09",
+    createdAt: demoTimestamp,
+    updatedAt: demoTimestamp,
+  },
+  {
+    id: "test_execution_demo_saas_auth_boundary_blocked",
+    projectId: "project_demo_saas",
+    cycleId: "test_cycle_demo_saas_auth_active",
+    testSuiteId: "test_suite_demo_saas_auth_regression",
+    testCaseId: "test_case_demo_saas_workspace_boundary_regression",
+    status: "blocked",
+    notes: "Bloqueado por ambiente indisponível.",
+    executedBy: "user_demo_qa_lead",
+    executedAt: "2026-05-12",
+    createdAt: demoTimestamp,
+    updatedAt: demoTimestamp,
+  },
+  {
+    id: "test_execution_demo_landing_mobile_skipped",
+    projectId: "project_demo_landing",
+    cycleId: "test_cycle_demo_landing_release_completed",
+    testSuiteId: "test_suite_demo_landing_release_main_flow",
+    testCaseId: "test_case_demo_landing_mobile_cta_narrow_screen",
+    status: "skipped",
+    notes: "Pulado fora do escopo deste ciclo.",
+    executedBy: "user_demo_qa_lead",
+    executedAt: "2026-05-10",
+    createdAt: demoTimestamp,
+    updatedAt: demoTimestamp,
+  },
+];
+
 export function isScenarioType(value: string): value is ScenarioType {
   return scenarioTypes.includes(value as ScenarioType);
 }
@@ -399,6 +476,10 @@ export function isTestCycleStatus(value: string): value is TestCycleStatus {
 
 export function isTestCyclePriority(value: string): value is TestCyclePriority {
   return testCyclePriorities.includes(value as TestCyclePriority);
+}
+
+export function isTestExecutionStatus(value: string): value is TestExecutionStatus {
+  return testExecutionStatuses.includes(value as TestExecutionStatus);
 }
 
 function isValidDateString(value: string): boolean {
@@ -604,6 +685,53 @@ export function validateTestCycleInput(input: TestCycleInput): string[] {
   return errors;
 }
 
+export function validateTestExecutionInput(input: TestExecutionInput): string[] {
+  const errors: string[] = [];
+
+  if (input.projectId.trim().length === 0) {
+    errors.push("test_execution_project_required");
+  }
+
+  if (input.cycleId.trim().length === 0) {
+    errors.push("test_execution_cycle_required");
+  }
+
+  if (input.testSuiteId.trim().length === 0) {
+    errors.push("test_execution_suite_required");
+  }
+
+  if (input.testCaseId.trim().length === 0) {
+    errors.push("test_execution_case_required");
+  }
+
+  if (!isTestExecutionStatus(input.status)) {
+    errors.push("invalid_test_execution_status");
+  }
+
+  if (input.executedAt && !isValidDateString(input.executedAt)) {
+    errors.push("invalid_test_execution_executed_at");
+  }
+
+  if (input.status !== "not_run") {
+    if (!input.executedAt || input.executedAt.trim().length === 0) {
+      errors.push("test_execution_executed_at_required");
+    }
+
+    if (!input.executedBy || input.executedBy.trim().length === 0) {
+      errors.push("test_execution_executed_by_required");
+    }
+  }
+
+  if (
+    (input.status === "failed" || input.status === "blocked") &&
+    (!input.notes || input.notes.trim().length < 2)
+  ) {
+    errors.push("test_execution_notes_required");
+  }
+
+  return errors;
+}
+
 export function listScenariosByProject(
   projectId: string,
   scenarios: TestScenario[] = demoTestScenarios,
@@ -715,6 +843,44 @@ export function listTestCyclesBySuite(
   return testCycles.filter((testCycle) => testCycle.testSuiteIds.includes(testSuiteId));
 }
 
+export function listExecutionsByProject(
+  projectId: string,
+  testExecutions: TestExecution[] = demoTestExecutions,
+): TestExecution[] {
+  return testExecutions.filter((testExecution) => testExecution.projectId === projectId);
+}
+
+export function listExecutionsByCycle(
+  cycleId: string,
+  testExecutions: TestExecution[] = demoTestExecutions,
+): TestExecution[] {
+  return testExecutions.filter((testExecution) => testExecution.cycleId === cycleId);
+}
+
+export function listExecutionsBySuite(
+  testSuiteId: string,
+  testExecutions: TestExecution[] = demoTestExecutions,
+): TestExecution[] {
+  return testExecutions.filter((testExecution) => testExecution.testSuiteId === testSuiteId);
+}
+
+export function listExecutionsByTestCase(
+  testCaseId: string,
+  testExecutions: TestExecution[] = demoTestExecutions,
+): TestExecution[] {
+  return testExecutions.filter((testExecution) => testExecution.testCaseId === testCaseId);
+}
+
+export function listExecutionsByStatus(
+  projectId: string,
+  status: TestExecutionStatus,
+  testExecutions: TestExecution[] = demoTestExecutions,
+): TestExecution[] {
+  return testExecutions.filter(
+    (testExecution) => testExecution.projectId === projectId && testExecution.status === status,
+  );
+}
+
 export function createTestScenario(input: TestScenarioInput, now = new Date()): TestScenario {
   const errors = validateTestScenarioInput(input);
 
@@ -819,6 +985,33 @@ export function createTestCycle(input: TestCycleInput, now = new Date()): TestCy
     owner: input.owner?.trim() ?? "",
     plannedStartAt: input.plannedStartAt?.trim() ?? "",
     plannedEndAt: input.plannedEndAt?.trim() ?? "",
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+}
+
+export function createTestExecution(
+  input: TestExecutionInput,
+  now = new Date(),
+): TestExecution {
+  const errors = validateTestExecutionInput(input);
+
+  if (errors.length > 0) {
+    throw new Error(errors.join(","));
+  }
+
+  const timestamp = now.toISOString();
+
+  return {
+    id: `test_execution_${now.getTime()}`,
+    projectId: input.projectId,
+    cycleId: input.cycleId,
+    testSuiteId: input.testSuiteId,
+    testCaseId: input.testCaseId,
+    status: input.status,
+    notes: input.notes?.trim() ?? "",
+    executedBy: input.executedBy?.trim() ?? "",
+    executedAt: input.executedAt?.trim() ?? "",
     createdAt: timestamp,
     updatedAt: timestamp,
   };
@@ -947,6 +1140,33 @@ export function updateTestCycle(
   return nextTestCycle;
 }
 
+export function updateTestExecution(
+  testExecution: TestExecution,
+  updates: Partial<TestExecutionInput>,
+  now = new Date(),
+): TestExecution {
+  const nextTestExecution: TestExecution = {
+    ...testExecution,
+    projectId: updates.projectId ?? testExecution.projectId,
+    cycleId: updates.cycleId ?? testExecution.cycleId,
+    testSuiteId: updates.testSuiteId ?? testExecution.testSuiteId,
+    testCaseId: updates.testCaseId ?? testExecution.testCaseId,
+    status: updates.status ?? testExecution.status,
+    notes: updates.notes?.trim() ?? testExecution.notes,
+    executedBy: updates.executedBy?.trim() ?? testExecution.executedBy,
+    executedAt: updates.executedAt?.trim() ?? testExecution.executedAt,
+    updatedAt: now.toISOString(),
+  };
+
+  const errors = validateTestExecutionInput(nextTestExecution);
+
+  if (errors.length > 0) {
+    throw new Error(errors.join(","));
+  }
+
+  return nextTestExecution;
+}
+
 export function countScenariosByBusinessRule(
   businessRuleId: string,
   scenarios: TestScenario[] = demoTestScenarios,
@@ -989,6 +1209,20 @@ export function countTestCyclesBySuite(
   return listTestCyclesBySuite(testSuiteId, testCycles).length;
 }
 
+export function countExecutionsByCycle(
+  cycleId: string,
+  testExecutions: TestExecution[] = demoTestExecutions,
+): number {
+  return listExecutionsByCycle(cycleId, testExecutions).length;
+}
+
+export function countExecutionsByTestCase(
+  testCaseId: string,
+  testExecutions: TestExecution[] = demoTestExecutions,
+): number {
+  return listExecutionsByTestCase(testCaseId, testExecutions).length;
+}
+
 function createEmptyScenariosByType(): Record<ScenarioType, number> {
   return scenarioTypes.reduce(
     (totals, scenarioType) => ({
@@ -1027,6 +1261,24 @@ function createEmptyCyclesByStatus(): Record<TestCycleStatus, number> {
     }),
     {} as Record<TestCycleStatus, number>,
   );
+}
+
+function createEmptyExecutionsByStatus(): Record<TestExecutionStatus, number> {
+  return testExecutionStatuses.reduce(
+    (totals, status) => ({
+      ...totals,
+      [status]: 0,
+    }),
+    {} as Record<TestExecutionStatus, number>,
+  );
+}
+
+function calculateRate(numerator: number, denominator: number): number {
+  if (denominator === 0) {
+    return 0;
+  }
+
+  return Math.round((numerator / denominator) * 100);
 }
 
 export function getScenarioDesignSummary(
@@ -1131,6 +1383,62 @@ export function getTestCycleSummary(
     criticalCycles: projectCycles.filter((testCycle) => testCycle.priority === "critical").length,
     totalLinkedSuites: linkedSuiteIds.size,
     cyclesByStatus,
+  };
+}
+
+export function getTestExecutionSummary(
+  projectId: string,
+  testExecutions: TestExecution[] = demoTestExecutions,
+): TestExecutionSummary {
+  const projectExecutions = listExecutionsByProject(projectId, testExecutions);
+  const executionsByStatus = createEmptyExecutionsByStatus();
+
+  projectExecutions.forEach((testExecution) => {
+    executionsByStatus[testExecution.status] += 1;
+  });
+
+  const totalExecutions = projectExecutions.length;
+  const passedExecutions = executionsByStatus.passed;
+  const executedExecutions = totalExecutions - executionsByStatus.not_run;
+
+  return {
+    totalExecutions,
+    notRunExecutions: executionsByStatus.not_run,
+    passedExecutions,
+    failedExecutions: executionsByStatus.failed,
+    blockedExecutions: executionsByStatus.blocked,
+    skippedExecutions: executionsByStatus.skipped,
+    executedExecutions,
+    completionRate: calculateRate(executedExecutions, totalExecutions),
+    passRate: calculateRate(passedExecutions, executedExecutions),
+    executionsByStatus,
+  };
+}
+
+export function getTestCycleExecutionSummary(
+  cycleId: string,
+  testExecutions: TestExecution[] = demoTestExecutions,
+): TestCycleExecutionSummary {
+  const cycleExecutions = listExecutionsByCycle(cycleId, testExecutions);
+  const executionsByStatus = createEmptyExecutionsByStatus();
+
+  cycleExecutions.forEach((testExecution) => {
+    executionsByStatus[testExecution.status] += 1;
+  });
+
+  const totalExecutions = cycleExecutions.length;
+  const passedExecutions = executionsByStatus.passed;
+  const executedExecutions = totalExecutions - executionsByStatus.not_run;
+
+  return {
+    totalExecutions,
+    notRunExecutions: executionsByStatus.not_run,
+    passedExecutions,
+    failedExecutions: executionsByStatus.failed,
+    blockedExecutions: executionsByStatus.blocked,
+    skippedExecutions: executionsByStatus.skipped,
+    completionRate: calculateRate(executedExecutions, totalExecutions),
+    passRate: calculateRate(passedExecutions, executedExecutions),
   };
 }
 
@@ -1345,5 +1653,132 @@ export function getTestSuiteCycleTraceability(
     ...testSuiteTraceability,
     testCycles: testCyclesForSuite,
     cycleCount: testCyclesForSuite.length,
+  };
+}
+
+export function getTestExecutionTraceability(
+  testExecutionId: string,
+  testExecutions: TestExecution[] = demoTestExecutions,
+  testCycles: TestCycle[] = demoTestCycles,
+  testSuites: TestSuite[] = demoTestSuites,
+  testCases: TestCase[] = demoTestCases,
+  scenarios: TestScenario[] = demoTestScenarios,
+  projects: Project[] = demoProjects,
+  modules: ProductModule[] = demoProductModules,
+  requirements: Requirement[] = demoRequirements,
+  businessRules: BusinessRule[] = demoBusinessRules,
+): TestExecutionTraceability {
+  const testExecution = testExecutions.find((item) => item.id === testExecutionId) ?? null;
+  const testCaseTraceability = testExecution
+    ? getTestCaseTraceability(
+        testExecution.testCaseId,
+        testCases,
+        scenarios,
+        projects,
+        modules,
+        requirements,
+        businessRules,
+      )
+    : null;
+
+  return {
+    project: testExecution
+      ? projects.find((project) => project.id === testExecution.projectId) ?? null
+      : null,
+    module: testCaseTraceability?.module ?? null,
+    requirement: testCaseTraceability?.requirement ?? null,
+    businessRule: testCaseTraceability?.businessRule ?? null,
+    scenario: testCaseTraceability?.scenario ?? null,
+    testCase: testCaseTraceability?.testCase ?? null,
+    testSuite: testExecution
+      ? testSuites.find((testSuite) => testSuite.id === testExecution.testSuiteId) ?? null
+      : null,
+    testCycle: testExecution
+      ? testCycles.find((testCycle) => testCycle.id === testExecution.cycleId) ?? null
+      : null,
+    testExecution,
+  };
+}
+
+export function getTestCaseExecutionTraceability(
+  testCaseId: string,
+  testExecutions: TestExecution[] = demoTestExecutions,
+  testCycles: TestCycle[] = demoTestCycles,
+  testSuites: TestSuite[] = demoTestSuites,
+  testCases: TestCase[] = demoTestCases,
+  scenarios: TestScenario[] = demoTestScenarios,
+  projects: Project[] = demoProjects,
+  modules: ProductModule[] = demoProductModules,
+  requirements: Requirement[] = demoRequirements,
+  businessRules: BusinessRule[] = demoBusinessRules,
+): TestCaseExecutionTraceability {
+  const testCaseTraceability = getTestCaseTraceability(
+    testCaseId,
+    testCases,
+    scenarios,
+    projects,
+    modules,
+    requirements,
+    businessRules,
+  );
+  const linkedExecutions = listExecutionsByTestCase(testCaseId, testExecutions);
+  const linkedSuiteIds = new Set(linkedExecutions.map((testExecution) => testExecution.testSuiteId));
+  const linkedCycleIds = new Set(linkedExecutions.map((testExecution) => testExecution.cycleId));
+
+  return {
+    ...testCaseTraceability,
+    testSuites: testSuites.filter((testSuite) => linkedSuiteIds.has(testSuite.id)),
+    testCycles: testCycles.filter((testCycle) => linkedCycleIds.has(testCycle.id)),
+    testExecutions: linkedExecutions,
+    executionCount: linkedExecutions.length,
+  };
+}
+
+export function getCycleExecutionTraceability(
+  cycleId: string,
+  testExecutions: TestExecution[] = demoTestExecutions,
+  testCycles: TestCycle[] = demoTestCycles,
+  testSuites: TestSuite[] = demoTestSuites,
+  testCases: TestCase[] = demoTestCases,
+  scenarios: TestScenario[] = demoTestScenarios,
+  projects: Project[] = demoProjects,
+  modules: ProductModule[] = demoProductModules,
+  requirements: Requirement[] = demoRequirements,
+  businessRules: BusinessRule[] = demoBusinessRules,
+): CycleExecutionTraceability {
+  const cycleTraceability = getTestCycleTraceability(
+    cycleId,
+    testCycles,
+    testSuites,
+    testCases,
+    scenarios,
+    projects,
+    modules,
+    requirements,
+    businessRules,
+  );
+  const linkedExecutions = listExecutionsByCycle(cycleId, testExecutions);
+  const linkedTestCaseIds = new Set(linkedExecutions.map((testExecution) => testExecution.testCaseId));
+
+  return {
+    project: cycleTraceability.project,
+    testCycle: cycleTraceability.testCycle,
+    testSuites: cycleTraceability.testSuites,
+    testCases: testCases.filter((testCase) => linkedTestCaseIds.has(testCase.id)),
+    testExecutions: linkedExecutions,
+    testExecutionTraceability: linkedExecutions.map((testExecution) =>
+      getTestExecutionTraceability(
+        testExecution.id,
+        testExecutions,
+        testCycles,
+        testSuites,
+        testCases,
+        scenarios,
+        projects,
+        modules,
+        requirements,
+        businessRules,
+      ),
+    ),
   };
 }

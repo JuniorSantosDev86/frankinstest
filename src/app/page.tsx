@@ -69,6 +69,7 @@ import { TestScenarioSection } from "./components/TestScenarioSection";
 import { TestCaseSection } from "./components/TestCaseSection";
 import { TestSuiteSection } from "./components/TestSuiteSection";
 import { TestCycleSection } from "./components/TestCycleSection";
+import { TestExecutionSection } from "./components/TestExecutionSection";
 import { TraceabilityFlow } from "./components/TraceabilityFlow";
 import { defaultLocale, isSupportedLocale, supportedLocales, translations, type Locale } from "./i18n";
 
@@ -1497,6 +1498,13 @@ export default function Home() {
           />
 
           <TestCycleSection
+            projects={visibleProjects}
+            modules={modules}
+            requirements={requirements}
+            businessRules={businessRules}
+          />
+
+          <TestExecutionSection
             projects={visibleProjects}
             modules={modules}
             requirements={requirements}

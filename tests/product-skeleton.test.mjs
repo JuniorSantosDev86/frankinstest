@@ -53,11 +53,15 @@ const testScenarioSectionSource = readFileSync(
 const testCaseSectionSource = readFileSync("src/app/components/TestCaseSection.tsx", "utf8");
 const testSuiteSectionSource = readFileSync("src/app/components/TestSuiteSection.tsx", "utf8");
 const testCycleSectionSource = readFileSync("src/app/components/TestCycleSection.tsx", "utf8");
+const testExecutionSectionSource = readFileSync(
+  "src/app/components/TestExecutionSection.tsx",
+  "utf8",
+);
 const metricCardSource = readFileSync("src/app/components/MetricCard.tsx", "utf8");
 const traceabilityFlowSource = readFileSync("src/app/components/TraceabilityFlow.tsx", "utf8");
 const insightCardsSource = readFileSync("src/app/components/InsightCards.tsx", "utf8");
 const quickActionsSource = readFileSync("src/app/components/QuickActions.tsx", "utf8");
-const productSource = `${pageSource}\n${i18nSource}\n${testScenarioSectionSource}\n${testCaseSectionSource}\n${testSuiteSectionSource}\n${testCycleSectionSource}\n${metricCardSource}\n${traceabilityFlowSource}\n${insightCardsSource}\n${quickActionsSource}`;
+const productSource = `${pageSource}\n${i18nSource}\n${testScenarioSectionSource}\n${testCaseSectionSource}\n${testSuiteSectionSource}\n${testCycleSectionSource}\n${testExecutionSectionSource}\n${metricCardSource}\n${traceabilityFlowSource}\n${insightCardsSource}\n${quickActionsSource}`;
 const projectTypesSource = readFileSync("src/lib/projects/types.ts", "utf8");
 const projectServiceSource = readFileSync("src/lib/projects/projectService.ts", "utf8");
 const businessTypesSource = readFileSync("src/lib/business-understanding/types.ts", "utf8");
@@ -85,6 +89,7 @@ test("FrankInTest shell exposes the required navigation sections", () => {
     "Casos de teste",
     "Suítes de teste",
     "Ciclos de teste",
+    "Execução de testes",
     "Check-up",
     "Reports",
     "FrankInDrift",
@@ -122,6 +127,7 @@ test("sidebar navigation includes expected QA workspace items", () => {
     "Casos de Teste",
     "Suítes de teste",
     "Ciclos de teste",
+    "Execução de testes",
     "Relatórios",
     "FrankInDrift",
     "Configurações",
@@ -1289,6 +1295,262 @@ test("test cycle traceability connects project, cycle, suites, and cases", () =>
   });
 });
 
+test("test execution model values match Block 05E scope", () => {
+  assert.deepEqual(testDesignTypes.testExecutionStatuses, [
+    "not_run",
+    "passed",
+    "failed",
+    "blocked",
+    "skipped",
+  ]);
+  assert.match(testDesignTypesSource, /TestExecution/);
+  assert.match(testDesignServiceSource, /demoTestExecutions/);
+  assert.deepEqual(
+    testDesignService.demoTestExecutions.map((testExecution) => testExecution.status).sort(),
+    ["blocked", "failed", "not_run", "passed", "skipped"],
+  );
+});
+
+test("test execution input validation accepts supported values and business rules", () => {
+  const validInput = {
+    projectId: "project_demo_landing",
+    cycleId: "test_cycle_demo_landing_release_completed",
+    testSuiteId: "test_suite_demo_landing_smoke",
+    testCaseId: "test_case_demo_landing_valid_email_submission",
+    status: "passed",
+    notes: "Fluxo validado sem divergências visíveis.",
+    executedBy: "user_demo_qa_lead",
+    executedAt: "2026-05-09",
+  };
+
+  assert.deepEqual(testDesignService.validateTestExecutionInput(validInput), []);
+  assert.equal(testDesignService.isTestExecutionStatus("passed"), true);
+  assert.equal(testDesignService.isTestExecutionStatus("ready"), false);
+  assert.deepEqual(
+    testDesignService.validateTestExecutionInput({
+      projectId: "",
+      cycleId: "",
+      testSuiteId: "",
+      testCaseId: "",
+      status: "ready",
+      executedAt: "invalid-date",
+    }),
+    [
+      "test_execution_project_required",
+      "test_execution_cycle_required",
+      "test_execution_suite_required",
+      "test_execution_case_required",
+      "invalid_test_execution_status",
+      "invalid_test_execution_executed_at",
+      "test_execution_executed_by_required",
+    ],
+  );
+  assert.deepEqual(
+    testDesignService.validateTestExecutionInput({
+      ...validInput,
+      status: "failed",
+      notes: "",
+    }),
+    ["test_execution_notes_required"],
+  );
+  assert.deepEqual(
+    testDesignService.validateTestExecutionInput({
+      ...validInput,
+      status: "blocked",
+      notes: "x",
+    }),
+    ["test_execution_notes_required"],
+  );
+  assert.deepEqual(
+    testDesignService.validateTestExecutionInput({
+      ...validInput,
+      status: "not_run",
+      executedAt: "",
+      executedBy: "",
+      notes: "",
+    }),
+    [],
+  );
+
+  const testExecution = testDesignService.createTestExecution(
+    validInput,
+    new Date("2026-05-12T12:20:00.000Z"),
+  );
+  assert.equal(testExecution.id, "test_execution_1778588400000");
+  assert.equal(testExecution.status, "passed");
+  assert.equal(testExecution.createdAt, "2026-05-12T12:20:00.000Z");
+
+  const updatedExecution = testDesignService.updateTestExecution(testExecution, {
+    status: "skipped",
+    notes: "Pulado fora do escopo deste ciclo.",
+  });
+  assert.equal(updatedExecution.status, "skipped");
+  assert.equal(updatedExecution.notes, "Pulado fora do escopo deste ciclo.");
+});
+
+test("test execution listing helpers filter by project, cycle, suite, test case, and status", () => {
+  assert.deepEqual(
+    testDesignService
+      .listExecutionsByProject("project_demo_landing")
+      .map((testExecution) => testExecution.id)
+      .sort(),
+    [
+      "test_execution_demo_landing_mobile_skipped",
+      "test_execution_demo_landing_release_invalid_email_failed",
+      "test_execution_demo_landing_release_valid_email_passed",
+      "test_execution_demo_landing_smoke_valid_email_not_run",
+    ],
+  );
+  assert.deepEqual(
+    testDesignService
+      .listExecutionsByCycle("test_cycle_demo_landing_release_completed")
+      .map((testExecution) => testExecution.status)
+      .sort(),
+    ["failed", "passed", "skipped"],
+  );
+  assert.deepEqual(
+    testDesignService
+      .listExecutionsBySuite("test_suite_demo_landing_smoke")
+      .map((testExecution) => testExecution.status)
+      .sort(),
+    ["failed", "not_run", "passed"],
+  );
+  assert.deepEqual(
+    testDesignService
+      .listExecutionsByTestCase("test_case_demo_landing_valid_email_submission")
+      .map((testExecution) => testExecution.status)
+      .sort(),
+    ["not_run", "passed"],
+  );
+  assert.deepEqual(
+    testDesignService
+      .listExecutionsByStatus("project_demo_landing", "failed")
+      .map((testExecution) => testExecution.id),
+    ["test_execution_demo_landing_release_invalid_email_failed"],
+  );
+});
+
+test("test execution counts and summaries are deterministic", () => {
+  assert.equal(
+    testDesignService.countExecutionsByCycle("test_cycle_demo_landing_release_completed"),
+    3,
+  );
+  assert.equal(
+    testDesignService.countExecutionsByTestCase(
+      "test_case_demo_landing_valid_email_submission",
+    ),
+    2,
+  );
+
+  assert.deepEqual(testDesignService.getTestExecutionSummary("project_demo_landing"), {
+    totalExecutions: 4,
+    notRunExecutions: 1,
+    passedExecutions: 1,
+    failedExecutions: 1,
+    blockedExecutions: 0,
+    skippedExecutions: 1,
+    executedExecutions: 3,
+    completionRate: 75,
+    passRate: 33,
+    executionsByStatus: {
+      not_run: 1,
+      passed: 1,
+      failed: 1,
+      blocked: 0,
+      skipped: 1,
+    },
+  });
+
+  assert.deepEqual(
+    testDesignService.getTestCycleExecutionSummary("test_cycle_demo_landing_release_completed"),
+    {
+      totalExecutions: 3,
+      notRunExecutions: 0,
+      passedExecutions: 1,
+      failedExecutions: 1,
+      blockedExecutions: 0,
+      skippedExecutions: 1,
+      completionRate: 100,
+      passRate: 33,
+    },
+  );
+
+  assert.deepEqual(testDesignService.getTestExecutionSummary("project_without_executions"), {
+    totalExecutions: 0,
+    notRunExecutions: 0,
+    passedExecutions: 0,
+    failedExecutions: 0,
+    blockedExecutions: 0,
+    skippedExecutions: 0,
+    executedExecutions: 0,
+    completionRate: 0,
+    passRate: 0,
+    executionsByStatus: {
+      not_run: 0,
+      passed: 0,
+      failed: 0,
+      blocked: 0,
+      skipped: 0,
+    },
+  });
+});
+
+test("test execution traceability connects project, cycle, suite, case, and deeper artifacts", () => {
+  const executionTraceability = testDesignService.getTestExecutionTraceability(
+    "test_execution_demo_landing_release_invalid_email_failed",
+  );
+
+  assert.equal(executionTraceability.project.id, "project_demo_landing");
+  assert.equal(executionTraceability.module.id, "module_demo_landing_conversion");
+  assert.equal(executionTraceability.requirement.id, "requirement_demo_landing_form");
+  assert.equal(executionTraceability.businessRule.id, "rule_demo_landing_email");
+  assert.equal(executionTraceability.scenario.id, "scenario_demo_landing_invalid_email");
+  assert.equal(
+    executionTraceability.testCase.id,
+    "test_case_demo_landing_invalid_email_rejected",
+  );
+  assert.equal(executionTraceability.testSuite.id, "test_suite_demo_landing_smoke");
+  assert.equal(
+    executionTraceability.testCycle.id,
+    "test_cycle_demo_landing_release_completed",
+  );
+  assert.equal(
+    executionTraceability.testExecution.id,
+    "test_execution_demo_landing_release_invalid_email_failed",
+  );
+
+  const caseExecutionTraceability = testDesignService.getTestCaseExecutionTraceability(
+    "test_case_demo_landing_valid_email_submission",
+  );
+  assert.equal(caseExecutionTraceability.executionCount, 2);
+  assert.deepEqual(
+    caseExecutionTraceability.testCycles.map((testCycle) => testCycle.id).sort(),
+    ["test_cycle_demo_landing_release_completed", "test_cycle_demo_landing_smoke_planned"],
+  );
+
+  const cycleExecutionTraceability = testDesignService.getCycleExecutionTraceability(
+    "test_cycle_demo_landing_release_completed",
+  );
+  assert.equal(cycleExecutionTraceability.project.id, "project_demo_landing");
+  assert.equal(cycleExecutionTraceability.testExecutionTraceability.length, 3);
+  assert.deepEqual(
+    cycleExecutionTraceability.testExecutions.map((testExecution) => testExecution.status).sort(),
+    ["failed", "passed", "skipped"],
+  );
+
+  assert.deepEqual(testDesignService.getTestExecutionTraceability("test_execution_missing"), {
+    project: null,
+    module: null,
+    requirement: null,
+    businessRule: null,
+    scenario: null,
+    testCase: null,
+    testSuite: null,
+    testCycle: null,
+    testExecution: null,
+  });
+});
+
 test("test scenario UI source exists and exposes the pt-BR section", () => {
   assert.match(pageSource, /TestScenarioSection/);
   assert.match(testScenarioSectionSource, /Cenários de teste/);
@@ -1494,6 +1756,69 @@ test("test cycle UI preserves relationship labels and cycle metadata", () => {
   });
 });
 
+test("test execution UI source exists and exposes the pt-BR section", () => {
+  assert.match(pageSource, /TestExecutionSection/);
+  assert.match(testExecutionSectionSource, /Execução de testes/);
+  assert.match(testExecutionSectionSource, /Projeto em análise/);
+  assert.match(testExecutionSectionSource, /Ciclo em execução/);
+  assert.match(testExecutionSectionSource, /Resumo de execução/);
+  assert.match(testExecutionSectionSource, /Casos do ciclo/);
+});
+
+test("test execution UI uses local demo persistence and service helpers", () => {
+  assert.match(testExecutionSectionSource, /frankintest\.block05\.testExecutions/);
+  assert.match(testExecutionSectionSource, /frankintest\.block05\.testCycles/);
+  assert.match(testExecutionSectionSource, /frankintest\.block05\.testSuites/);
+  assert.match(testExecutionSectionSource, /frankintest\.block04\.testCases/);
+  assert.match(testExecutionSectionSource, /demoTestExecutions/);
+  assert.match(testExecutionSectionSource, /validateTestExecutionInput/);
+  assert.match(testExecutionSectionSource, /createTestExecution/);
+  assert.match(testExecutionSectionSource, /updateTestExecution/);
+  assert.match(testExecutionSectionSource, /getTestExecutionSummary/);
+  assert.match(testExecutionSectionSource, /getTestCycleExecutionSummary/);
+  assert.match(testExecutionSectionSource, /listExecutionsByCycle/);
+});
+
+test("test execution UI includes status labels and local update controls", () => {
+  [
+    "Não executado",
+    "Aprovado",
+    "Falhou",
+    "Bloqueado",
+    "Pulado",
+    "Status da execução",
+    "Notas da execução",
+    "Executado por",
+    "Executado em",
+    "Atualizar execução",
+    "Preparar execuções do ciclo",
+  ].forEach((copy) => {
+    assert.match(testExecutionSectionSource, new RegExp(copy));
+  });
+  assert.match(testExecutionSectionSource, /type="date"/);
+  assert.match(testExecutionSectionSource, /textarea/);
+});
+
+test("test execution UI preserves relationship labels and scope limitations", () => {
+  [
+    "Projeto -&gt; Ciclo de teste -&gt; Suíte de teste -&gt; Caso de teste -&gt; Execução",
+    "Projeto",
+    "Ciclo de teste",
+    "Suíte de teste",
+    "Caso de teste",
+    "Execução",
+    "Módulo",
+    "Requisito",
+    "Regra de negócio",
+    "Cenário de teste",
+    "Falhas ainda não geram bugs automaticamente; isso será adicionado no bloco de bugs.",
+    "Evidências ainda não são anexadas neste bloco.",
+    "Persistência local de demonstração via localStorage",
+  ].forEach((copy) => {
+    assert.match(testExecutionSectionSource, new RegExp(copy));
+  });
+});
+
 test("dashboard traceability, insights, and quick actions sections are present as UI-only cards", () => {
   [
     "Rastreabilidade",
@@ -1518,6 +1843,14 @@ test("test case navigation points to the local MVP section", () => {
 test("test suite navigation points to the local MVP section", () => {
   assert.match(i18nSource, /label: "Suítes de teste", href: "#test-suites", status: "MVP local"/);
   assert.match(testSuiteSectionSource, /id="test-suites"/);
+});
+
+test("test execution navigation points to the local MVP section", () => {
+  assert.match(
+    i18nSource,
+    /label: "Execução de testes", href: "#test-executions", status: "MVP local"/,
+  );
+  assert.match(testExecutionSectionSource, /id="test-executions"/);
 });
 
 test("language selector is visible in the application shell", () => {
