@@ -39,3 +39,8 @@ npm run dev
 npm run lint
 npm test
 npm run build
+```
+
+## Status
+
+FrankInTest is under active development.

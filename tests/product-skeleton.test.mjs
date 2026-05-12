@@ -109,6 +109,10 @@ test("i18n foundation exposes the three supported locales", () => {
   });
 });
 
+test("pt-BR remains the default locale", () => {
+  assert.match(i18nSource, /defaultLocale = "pt-BR"/);
+});
+
 test("supported project types match the product data model", () => {
   assert.deepEqual(projectTypesModule.projectTypes, [
     "landing_page",
