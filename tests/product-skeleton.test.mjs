@@ -627,6 +627,218 @@ test("test scenario traceability connects project, module, requirement, rule, an
   });
 });
 
+test("test case model values match Block 04C scope", () => {
+  assert.deepEqual(testDesignTypes.testCasePriorities, ["low", "medium", "high", "critical"]);
+  assert.deepEqual(testDesignTypes.testCaseStatuses, [
+    "draft",
+    "ready",
+    "needs_review",
+    "archived",
+  ]);
+  assert.deepEqual(testDesignTypes.testCaseAutomationStatuses, [
+    "not_automated",
+    "automation_candidate",
+    "automated",
+    "not_applicable",
+  ]);
+  assert.match(testDesignTypesSource, /TestCase/);
+  assert.match(testDesignServiceSource, /demoTestCases/);
+});
+
+test("test case input validation accepts supported values and rejects invalid values", () => {
+  const validInput = {
+    projectId: "project_demo_saas",
+    moduleId: "module_demo_saas_auth",
+    requirementId: "requirement_demo_saas_session",
+    businessRuleId: "rule_demo_saas_workspace_boundary",
+    scenarioId: "scenario_demo_saas_workspace_boundary_regression",
+    title: "Workspace boundary regression case",
+    objective: "Confirm that unrelated workspace projects are not visible.",
+    precondition: "Demo user session exists.",
+    steps: ["Load demo session", "Check access to unrelated project"],
+    expectedResult: "Access is denied and unrelated project data is not returned.",
+    priority: "critical",
+    status: "ready",
+    testLevel: "integration",
+    automationStatus: "automated",
+    aiGenerated: false,
+    reviewedBy: "user_demo_qa_lead",
+  };
+
+  assert.deepEqual(testDesignService.validateTestCaseInput(validInput), []);
+  assert.equal(testDesignService.isTestCasePriority("critical"), true);
+  assert.equal(testDesignService.isTestCasePriority("urgent"), false);
+  assert.equal(testDesignService.isTestCaseStatus("needs_review"), true);
+  assert.equal(testDesignService.isTestCaseAutomationStatus("automation_candidate"), true);
+  assert.deepEqual(
+    testDesignService.validateTestCaseInput({
+      ...validInput,
+      projectId: "",
+      moduleId: "",
+      requirementId: "",
+      businessRuleId: "",
+      scenarioId: "",
+      title: "",
+      objective: "",
+      steps: ["x"],
+      expectedResult: "",
+      priority: "urgent",
+      status: "done",
+      testLevel: "browser",
+      automationStatus: "robot_ready",
+    }),
+    [
+      "test_case_project_required",
+      "test_case_module_required",
+      "test_case_requirement_required",
+      "test_case_business_rule_required",
+      "test_case_scenario_required",
+      "test_case_title_required",
+      "test_case_objective_required",
+      "test_case_step_required",
+      "test_case_expected_result_required",
+      "invalid_test_case_priority",
+      "invalid_test_case_status",
+      "invalid_test_level",
+      "invalid_test_case_automation_status",
+    ],
+  );
+  assert.deepEqual(
+    testDesignService.validateTestCaseInput({ ...validInput, steps: [] }),
+    ["test_case_steps_required"],
+  );
+
+  const testCase = testDesignService.createTestCase(
+    validInput,
+    new Date("2026-05-12T12:05:00.000Z"),
+  );
+  assert.equal(testCase.id, "test_case_1778587500000");
+  assert.equal(testCase.scenarioId, "scenario_demo_saas_workspace_boundary_regression");
+  assert.deepEqual(testCase.steps, ["Load demo session", "Check access to unrelated project"]);
+  assert.equal(testCase.createdAt, "2026-05-12T12:05:00.000Z");
+});
+
+test("test case listing helpers filter by project, module, requirement, rule, and scenario", () => {
+  assert.deepEqual(
+    testDesignService
+      .listTestCasesByProject("project_demo_landing")
+      .map((testCase) => testCase.id)
+      .sort(),
+    [
+      "test_case_demo_landing_invalid_email_rejected",
+      "test_case_demo_landing_mobile_cta_narrow_screen",
+      "test_case_demo_landing_valid_email_submission",
+    ],
+  );
+  assert.deepEqual(
+    testDesignService
+      .listTestCasesByModule("module_demo_landing_conversion")
+      .map((testCase) => testCase.id)
+      .sort(),
+    [
+      "test_case_demo_landing_invalid_email_rejected",
+      "test_case_demo_landing_valid_email_submission",
+    ],
+  );
+  assert.deepEqual(
+    testDesignService
+      .listTestCasesByRequirement("requirement_demo_saas_session")
+      .map((testCase) => testCase.id),
+    ["test_case_demo_saas_workspace_boundary_regression"],
+  );
+  assert.deepEqual(
+    testDesignService
+      .listTestCasesByBusinessRule("rule_demo_landing_email")
+      .map((testCase) => testCase.scenarioId)
+      .sort(),
+    ["scenario_demo_landing_invalid_email", "scenario_demo_landing_valid_email"],
+  );
+  assert.deepEqual(
+    testDesignService
+      .listTestCasesByScenario("scenario_demo_landing_mobile_cta_small_screen")
+      .map((testCase) => testCase.id),
+    ["test_case_demo_landing_mobile_cta_narrow_screen"],
+  );
+});
+
+test("test case counts and design summary are deterministic", () => {
+  assert.equal(
+    testDesignService.countTestCasesByScenario("scenario_demo_landing_valid_email"),
+    1,
+  );
+
+  assert.deepEqual(testDesignService.getTestCaseDesignSummary("project_demo_landing"), {
+    totalTestCases: 3,
+    readyTestCases: 2,
+    testCasesNeedingReview: 1,
+    criticalTestCases: 0,
+    automationCandidates: 1,
+    automatedTestCases: 0,
+    aiGeneratedTestCases: 1,
+    testCasesByAutomationStatus: {
+      not_automated: 1,
+      automation_candidate: 1,
+      automated: 0,
+      not_applicable: 1,
+    },
+  });
+
+  assert.deepEqual(testDesignService.getTestCaseDesignSummary("project_demo_saas"), {
+    totalTestCases: 1,
+    readyTestCases: 1,
+    testCasesNeedingReview: 0,
+    criticalTestCases: 1,
+    automationCandidates: 0,
+    automatedTestCases: 1,
+    aiGeneratedTestCases: 0,
+    testCasesByAutomationStatus: {
+      not_automated: 0,
+      automation_candidate: 0,
+      automated: 1,
+      not_applicable: 0,
+    },
+  });
+});
+
+test("test case traceability connects project, module, requirement, rule, scenario, and test case", () => {
+  const scenarioTraceability = testDesignService.getScenarioTestCaseTraceability(
+    "scenario_demo_landing_valid_email",
+  );
+
+  assert.equal(scenarioTraceability.scenario.id, "scenario_demo_landing_valid_email");
+  assert.equal(scenarioTraceability.testCaseCount, 1);
+  assert.equal(
+    scenarioTraceability.testCases[0].id,
+    "test_case_demo_landing_valid_email_submission",
+  );
+
+  const testCaseTraceability = testDesignService.getTestCaseTraceability(
+    "test_case_demo_saas_workspace_boundary_regression",
+  );
+
+  assert.equal(testCaseTraceability.project.id, "project_demo_saas");
+  assert.equal(testCaseTraceability.module.id, "module_demo_saas_auth");
+  assert.equal(testCaseTraceability.requirement.id, "requirement_demo_saas_session");
+  assert.equal(testCaseTraceability.businessRule.id, "rule_demo_saas_workspace_boundary");
+  assert.equal(
+    testCaseTraceability.scenario.id,
+    "scenario_demo_saas_workspace_boundary_regression",
+  );
+  assert.equal(
+    testCaseTraceability.testCase.id,
+    "test_case_demo_saas_workspace_boundary_regression",
+  );
+
+  assert.deepEqual(testDesignService.getTestCaseTraceability("test_case_missing"), {
+    project: null,
+    module: null,
+    requirement: null,
+    businessRule: null,
+    scenario: null,
+    testCase: null,
+  });
+});
+
 test("test scenario UI source exists and exposes the pt-BR section", () => {
   assert.match(pageSource, /TestScenarioSection/);
   assert.match(testScenarioSectionSource, /Cenários de teste/);

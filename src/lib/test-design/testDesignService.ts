@@ -10,13 +10,24 @@ import {
   scenarioPriorities,
   scenarioStatuses,
   scenarioTypes,
+  testCaseAutomationStatuses,
+  testCasePriorities,
+  testCaseStatuses,
   testLevels,
   type BusinessRuleScenarioTraceability,
   type ScenarioDesignSummary,
+  type ScenarioTestCaseTraceability,
   type ScenarioPriority,
   type ScenarioStatus,
   type ScenarioTraceability,
   type ScenarioType,
+  type TestCase,
+  type TestCaseAutomationStatus,
+  type TestCaseDesignSummary,
+  type TestCaseInput,
+  type TestCasePriority,
+  type TestCaseStatus,
+  type TestCaseTraceability,
   type TestLevel,
   type TestScenario,
   type TestScenarioInput,
@@ -95,6 +106,109 @@ export const demoTestScenarios: TestScenario[] = [
   },
 ];
 
+export const demoTestCases: TestCase[] = [
+  {
+    id: "test_case_demo_landing_valid_email_submission",
+    projectId: "project_demo_landing",
+    moduleId: "module_demo_landing_conversion",
+    requirementId: "requirement_demo_landing_form",
+    businessRuleId: "rule_demo_landing_email",
+    scenarioId: "scenario_demo_landing_valid_email",
+    title: "Enviar lead com email valido",
+    objective: "Confirmar que o formulario aceita um lead com email em formato valido.",
+    precondition: "Landing page disponivel e formulario de lead visivel.",
+    steps: [
+      "Acessar a landing page",
+      "Preencher o campo de email com um valor valido",
+      "Enviar o formulario",
+    ],
+    expectedResult: "O lead deve ser registrado e a mensagem de sucesso deve ser exibida.",
+    priority: "high",
+    status: "ready",
+    testLevel: "acceptance",
+    automationStatus: "automation_candidate",
+    aiGenerated: false,
+    reviewedBy: "user_demo_qa_lead",
+    createdAt: demoTimestamp,
+    updatedAt: demoTimestamp,
+  },
+  {
+    id: "test_case_demo_landing_invalid_email_rejected",
+    projectId: "project_demo_landing",
+    moduleId: "module_demo_landing_conversion",
+    requirementId: "requirement_demo_landing_form",
+    businessRuleId: "rule_demo_landing_email",
+    scenarioId: "scenario_demo_landing_invalid_email",
+    title: "Bloquear envio com email invalido",
+    objective: "Validar que o formulario nao aceita lead sem email valido.",
+    precondition: "Landing page disponivel e formulario de lead visivel.",
+    steps: [
+      "Acessar a landing page",
+      "Preencher o campo de email com formato invalido",
+      "Enviar o formulario",
+    ],
+    expectedResult: "O envio deve ser bloqueado e uma orientacao de email valido deve aparecer.",
+    priority: "high",
+    status: "ready",
+    testLevel: "acceptance",
+    automationStatus: "not_automated",
+    aiGenerated: false,
+    reviewedBy: "user_demo_qa_lead",
+    createdAt: demoTimestamp,
+    updatedAt: demoTimestamp,
+  },
+  {
+    id: "test_case_demo_landing_mobile_cta_narrow_screen",
+    projectId: "project_demo_landing",
+    moduleId: "module_demo_landing_responsive",
+    requirementId: "requirement_demo_landing_mobile",
+    businessRuleId: "rule_demo_landing_mobile_cta",
+    scenarioId: "scenario_demo_landing_mobile_cta_small_screen",
+    title: "Revisar CTA em tela mobile estreita",
+    objective: "Verificar se o CTA permanece visivel e acionavel em largura mobile reduzida.",
+    precondition: "Landing page aberta em viewport mobile estreito.",
+    steps: [
+      "Acessar a landing page em viewport mobile",
+      "Rolar ate a area principal de conversao",
+      "Verificar visibilidade e acionamento do CTA",
+    ],
+    expectedResult: "O CTA deve continuar visivel, acionavel e sem cobrir conteudo essencial.",
+    priority: "medium",
+    status: "needs_review",
+    testLevel: "exploratory",
+    automationStatus: "not_applicable",
+    aiGenerated: true,
+    reviewedBy: "",
+    createdAt: demoTimestamp,
+    updatedAt: demoTimestamp,
+  },
+  {
+    id: "test_case_demo_saas_workspace_boundary_regression",
+    projectId: "project_demo_saas",
+    moduleId: "module_demo_saas_auth",
+    requirementId: "requirement_demo_saas_session",
+    businessRuleId: "rule_demo_saas_workspace_boundary",
+    scenarioId: "scenario_demo_saas_workspace_boundary_regression",
+    title: "Regredir acesso entre workspaces",
+    objective: "Confirmar que um usuario nao acessa projetos de outra organizacao.",
+    precondition: "Usuario demo autenticado e projeto externo simulado indisponivel ao workspace.",
+    steps: [
+      "Carregar a sessao do usuario demo",
+      "Tentar consultar projeto de outra organizacao",
+      "Validar o resultado da checagem de acesso",
+    ],
+    expectedResult: "O acesso deve ser negado e nenhum dado de outro workspace deve ser retornado.",
+    priority: "critical",
+    status: "ready",
+    testLevel: "integration",
+    automationStatus: "automated",
+    aiGenerated: false,
+    reviewedBy: "user_demo_qa_lead",
+    createdAt: demoTimestamp,
+    updatedAt: demoTimestamp,
+  },
+];
+
 export function isScenarioType(value: string): value is ScenarioType {
   return scenarioTypes.includes(value as ScenarioType);
 }
@@ -109,6 +223,18 @@ export function isScenarioStatus(value: string): value is ScenarioStatus {
 
 export function isTestLevel(value: string): value is TestLevel {
   return testLevels.includes(value as TestLevel);
+}
+
+export function isTestCasePriority(value: string): value is TestCasePriority {
+  return testCasePriorities.includes(value as TestCasePriority);
+}
+
+export function isTestCaseStatus(value: string): value is TestCaseStatus {
+  return testCaseStatuses.includes(value as TestCaseStatus);
+}
+
+export function isTestCaseAutomationStatus(value: string): value is TestCaseAutomationStatus {
+  return testCaseAutomationStatuses.includes(value as TestCaseAutomationStatus);
 }
 
 export function validateTestScenarioInput(input: TestScenarioInput): string[] {
@@ -153,6 +279,71 @@ export function validateTestScenarioInput(input: TestScenarioInput): string[] {
   return errors;
 }
 
+export function validateTestCaseInput(input: TestCaseInput): string[] {
+  const errors: string[] = [];
+
+  if (input.projectId.trim().length === 0) {
+    errors.push("test_case_project_required");
+  }
+
+  if (input.moduleId.trim().length === 0) {
+    errors.push("test_case_module_required");
+  }
+
+  if (input.requirementId.trim().length === 0) {
+    errors.push("test_case_requirement_required");
+  }
+
+  if (input.businessRuleId.trim().length === 0) {
+    errors.push("test_case_business_rule_required");
+  }
+
+  if (input.scenarioId.trim().length === 0) {
+    errors.push("test_case_scenario_required");
+  }
+
+  if (input.title.trim().length < 2) {
+    errors.push("test_case_title_required");
+  }
+
+  if (input.objective.trim().length < 2) {
+    errors.push("test_case_objective_required");
+  }
+
+  if (input.steps.length === 0) {
+    errors.push("test_case_steps_required");
+  }
+
+  if (input.steps.some((step) => step.trim().length < 2)) {
+    errors.push("test_case_step_required");
+  }
+
+  if (input.expectedResult.trim().length < 2) {
+    errors.push("test_case_expected_result_required");
+  }
+
+  if (input.priority !== undefined && !isTestCasePriority(input.priority)) {
+    errors.push("invalid_test_case_priority");
+  }
+
+  if (input.status !== undefined && !isTestCaseStatus(input.status)) {
+    errors.push("invalid_test_case_status");
+  }
+
+  if (input.testLevel !== undefined && !isTestLevel(input.testLevel)) {
+    errors.push("invalid_test_level");
+  }
+
+  if (
+    input.automationStatus !== undefined &&
+    !isTestCaseAutomationStatus(input.automationStatus)
+  ) {
+    errors.push("invalid_test_case_automation_status");
+  }
+
+  return errors;
+}
+
 export function listScenariosByProject(
   projectId: string,
   scenarios: TestScenario[] = demoTestScenarios,
@@ -181,6 +372,41 @@ export function listScenariosByBusinessRule(
   return scenarios.filter((scenario) => scenario.businessRuleId === businessRuleId);
 }
 
+export function listTestCasesByProject(
+  projectId: string,
+  testCases: TestCase[] = demoTestCases,
+): TestCase[] {
+  return testCases.filter((testCase) => testCase.projectId === projectId);
+}
+
+export function listTestCasesByModule(
+  moduleId: string,
+  testCases: TestCase[] = demoTestCases,
+): TestCase[] {
+  return testCases.filter((testCase) => testCase.moduleId === moduleId);
+}
+
+export function listTestCasesByRequirement(
+  requirementId: string,
+  testCases: TestCase[] = demoTestCases,
+): TestCase[] {
+  return testCases.filter((testCase) => testCase.requirementId === requirementId);
+}
+
+export function listTestCasesByBusinessRule(
+  businessRuleId: string,
+  testCases: TestCase[] = demoTestCases,
+): TestCase[] {
+  return testCases.filter((testCase) => testCase.businessRuleId === businessRuleId);
+}
+
+export function listTestCasesByScenario(
+  scenarioId: string,
+  testCases: TestCase[] = demoTestCases,
+): TestCase[] {
+  return testCases.filter((testCase) => testCase.scenarioId === scenarioId);
+}
+
 export function createTestScenario(input: TestScenarioInput, now = new Date()): TestScenario {
   const errors = validateTestScenarioInput(input);
 
@@ -202,6 +428,38 @@ export function createTestScenario(input: TestScenarioInput, now = new Date()): 
     priority: input.priority ?? "medium",
     status: input.status ?? "draft",
     testLevel: input.testLevel ?? "acceptance",
+    aiGenerated: input.aiGenerated ?? false,
+    reviewedBy: input.reviewedBy?.trim() ?? "",
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+}
+
+export function createTestCase(input: TestCaseInput, now = new Date()): TestCase {
+  const errors = validateTestCaseInput(input);
+
+  if (errors.length > 0) {
+    throw new Error(errors.join(","));
+  }
+
+  const timestamp = now.toISOString();
+
+  return {
+    id: `test_case_${now.getTime()}`,
+    projectId: input.projectId,
+    moduleId: input.moduleId,
+    requirementId: input.requirementId,
+    businessRuleId: input.businessRuleId,
+    scenarioId: input.scenarioId,
+    title: input.title.trim(),
+    objective: input.objective.trim(),
+    precondition: input.precondition?.trim() ?? "",
+    steps: input.steps.map((step) => step.trim()),
+    expectedResult: input.expectedResult.trim(),
+    priority: input.priority ?? "medium",
+    status: input.status ?? "draft",
+    testLevel: input.testLevel ?? "acceptance",
+    automationStatus: input.automationStatus ?? "not_automated",
     aiGenerated: input.aiGenerated ?? false,
     reviewedBy: input.reviewedBy?.trim() ?? "",
     createdAt: timestamp,
@@ -240,11 +498,53 @@ export function updateTestScenario(
   return nextScenario;
 }
 
+export function updateTestCase(
+  testCase: TestCase,
+  updates: Partial<TestCaseInput>,
+  now = new Date(),
+): TestCase {
+  const nextTestCase: TestCase = {
+    ...testCase,
+    projectId: updates.projectId ?? testCase.projectId,
+    moduleId: updates.moduleId ?? testCase.moduleId,
+    requirementId: updates.requirementId ?? testCase.requirementId,
+    businessRuleId: updates.businessRuleId ?? testCase.businessRuleId,
+    scenarioId: updates.scenarioId ?? testCase.scenarioId,
+    title: updates.title?.trim() ?? testCase.title,
+    objective: updates.objective?.trim() ?? testCase.objective,
+    precondition: updates.precondition?.trim() ?? testCase.precondition,
+    steps: updates.steps?.map((step) => step.trim()) ?? testCase.steps,
+    expectedResult: updates.expectedResult?.trim() ?? testCase.expectedResult,
+    priority: updates.priority ?? testCase.priority,
+    status: updates.status ?? testCase.status,
+    testLevel: updates.testLevel ?? testCase.testLevel,
+    automationStatus: updates.automationStatus ?? testCase.automationStatus,
+    aiGenerated: updates.aiGenerated ?? testCase.aiGenerated,
+    reviewedBy: updates.reviewedBy?.trim() ?? testCase.reviewedBy,
+    updatedAt: now.toISOString(),
+  };
+
+  const errors = validateTestCaseInput(nextTestCase);
+
+  if (errors.length > 0) {
+    throw new Error(errors.join(","));
+  }
+
+  return nextTestCase;
+}
+
 export function countScenariosByBusinessRule(
   businessRuleId: string,
   scenarios: TestScenario[] = demoTestScenarios,
 ): number {
   return listScenariosByBusinessRule(businessRuleId, scenarios).length;
+}
+
+export function countTestCasesByScenario(
+  scenarioId: string,
+  testCases: TestCase[] = demoTestCases,
+): number {
+  return listTestCasesByScenario(scenarioId, testCases).length;
 }
 
 function createEmptyScenariosByType(): Record<ScenarioType, number> {
@@ -254,6 +554,16 @@ function createEmptyScenariosByType(): Record<ScenarioType, number> {
       [scenarioType]: 0,
     }),
     {} as Record<ScenarioType, number>,
+  );
+}
+
+function createEmptyTestCasesByAutomationStatus(): Record<TestCaseAutomationStatus, number> {
+  return testCaseAutomationStatuses.reduce(
+    (totals, automationStatus) => ({
+      ...totals,
+      [automationStatus]: 0,
+    }),
+    {} as Record<TestCaseAutomationStatus, number>,
   );
 }
 
@@ -281,6 +591,36 @@ export function getScenarioDesignSummary(
   };
 }
 
+export function getTestCaseDesignSummary(
+  projectId: string,
+  testCases: TestCase[] = demoTestCases,
+): TestCaseDesignSummary {
+  const projectTestCases = listTestCasesByProject(projectId, testCases);
+  const testCasesByAutomationStatus = createEmptyTestCasesByAutomationStatus();
+
+  projectTestCases.forEach((testCase) => {
+    testCasesByAutomationStatus[testCase.automationStatus] += 1;
+  });
+
+  return {
+    totalTestCases: projectTestCases.length,
+    readyTestCases: projectTestCases.filter((testCase) => testCase.status === "ready").length,
+    testCasesNeedingReview: projectTestCases.filter(
+      (testCase) => testCase.status === "needs_review",
+    ).length,
+    criticalTestCases: projectTestCases.filter((testCase) => testCase.priority === "critical")
+      .length,
+    automationCandidates: projectTestCases.filter(
+      (testCase) => testCase.automationStatus === "automation_candidate",
+    ).length,
+    automatedTestCases: projectTestCases.filter(
+      (testCase) => testCase.automationStatus === "automated",
+    ).length,
+    aiGeneratedTestCases: projectTestCases.filter((testCase) => testCase.aiGenerated).length,
+    testCasesByAutomationStatus,
+  };
+}
+
 export function getBusinessRuleScenarioTraceability(
   businessRuleId: string,
   businessRules: BusinessRule[] = demoBusinessRules,
@@ -293,6 +633,21 @@ export function getBusinessRuleScenarioTraceability(
     businessRule,
     scenarios: linkedScenarios,
     scenarioCount: linkedScenarios.length,
+  };
+}
+
+export function getScenarioTestCaseTraceability(
+  scenarioId: string,
+  scenarios: TestScenario[] = demoTestScenarios,
+  testCases: TestCase[] = demoTestCases,
+): ScenarioTestCaseTraceability {
+  const scenario = scenarios.find((item) => item.id === scenarioId) ?? null;
+  const linkedTestCases = listTestCasesByScenario(scenarioId, testCases);
+
+  return {
+    scenario,
+    testCases: linkedTestCases,
+    testCaseCount: linkedTestCases.length,
   };
 }
 
@@ -318,5 +673,34 @@ export function getScenarioTraceability(
       ? businessRules.find((rule) => rule.id === scenario.businessRuleId) ?? null
       : null,
     scenario,
+  };
+}
+
+export function getTestCaseTraceability(
+  testCaseId: string,
+  testCases: TestCase[] = demoTestCases,
+  scenarios: TestScenario[] = demoTestScenarios,
+  projects: Project[] = demoProjects,
+  modules: ProductModule[] = demoProductModules,
+  requirements: Requirement[] = demoRequirements,
+  businessRules: BusinessRule[] = demoBusinessRules,
+): TestCaseTraceability {
+  const testCase = testCases.find((item) => item.id === testCaseId) ?? null;
+
+  return {
+    project: testCase
+      ? projects.find((project) => project.id === testCase.projectId) ?? null
+      : null,
+    module: testCase ? modules.find((module) => module.id === testCase.moduleId) ?? null : null,
+    requirement: testCase
+      ? requirements.find((requirement) => requirement.id === testCase.requirementId) ?? null
+      : null,
+    businessRule: testCase
+      ? businessRules.find((rule) => rule.id === testCase.businessRuleId) ?? null
+      : null,
+    scenario: testCase
+      ? scenarios.find((scenario) => scenario.id === testCase.scenarioId) ?? null
+      : null,
+    testCase,
   };
 }
