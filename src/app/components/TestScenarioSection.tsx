@@ -6,6 +6,7 @@ import type { BusinessRule, ProductModule, Requirement } from "@/lib/business-un
 import type { Project } from "@/lib/projects/types";
 import {
   createTestScenario,
+  demoTestCases,
   demoTestScenarios,
   getScenarioDesignSummary,
   listScenariosByProject,
@@ -26,6 +27,7 @@ import {
 } from "@/lib/test-design/types";
 
 export const scenarioStorageKey = "frankintest.block04.scenarios";
+const testCaseStorageKey = "frankintest.block04.testCases";
 
 const scenarioTypeLabels: Record<ScenarioType, string> = {
   positive: "Positivo",
@@ -106,6 +108,15 @@ export function TestScenarioSection({
   requirements,
   businessRules,
 }: TestScenarioSectionProps) {
+  const [testCases] = useState(() => {
+    if (typeof window === "undefined") {
+      return demoTestCases;
+    }
+
+    const storedTestCases = window.localStorage.getItem(testCaseStorageKey);
+
+    return storedTestCases ? JSON.parse(storedTestCases) : demoTestCases;
+  });
   const [scenarios, setScenarios] = useState<TestScenario[]>(() => {
     if (typeof window === "undefined") {
       return demoTestScenarios;
@@ -337,7 +348,7 @@ export function TestScenarioSection({
         </div>
       </section>
 
-      <div className="mt-6 grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+      <div className="mt-6 grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
         <section className="rounded-2xl border border-slate-900/10 bg-white p-5">
           <h3 className="text-xl font-black tracking-tight text-slate-950">
             {editingScenarioId ? "Editar cenário" : "Novo cenário"}
@@ -491,62 +502,83 @@ export function TestScenarioSection({
               </p>
             </section>
           ) : (
-            projectScenarios.map((scenario) => {
-              const linkedModule = modules.find((module) => module.id === scenario.moduleId);
-              const linkedRequirement = requirements.find(
-                (requirement) => requirement.id === scenario.requirementId,
-              );
-              const linkedRule = businessRules.find(
-                (rule) => rule.id === scenario.businessRuleId,
-              );
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-left text-sm">
+                  <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="px-4 py-3 font-bold">Cenário</th>
+                      <th className="px-4 py-3 font-bold">Módulo</th>
+                      <th className="px-4 py-3 font-bold">Requisito/Regra</th>
+                      <th className="px-4 py-3 font-bold">Prioridade</th>
+                      <th className="px-4 py-3 font-bold">Status</th>
+                      <th className="px-4 py-3 font-bold">Casos</th>
+                      <th className="px-4 py-3 font-bold">Automação</th>
+                      <th className="px-4 py-3 font-bold">Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {projectScenarios.map((scenario) => {
+                      const linkedModule = modules.find((module) => module.id === scenario.moduleId);
+                      const linkedRequirement = requirements.find(
+                        (requirement) => requirement.id === scenario.requirementId,
+                      );
+                      const linkedRule = businessRules.find(
+                        (rule) => rule.id === scenario.businessRuleId,
+                      );
+                      const linkedCases = testCases.filter(
+                        (testCase: { scenarioId: string; automationStatus: string }) =>
+                          testCase.scenarioId === scenario.id,
+                      );
+                      const automationCount = linkedCases.filter(
+                        (testCase: { automationStatus: string }) =>
+                          testCase.automationStatus === "automation_candidate" ||
+                          testCase.automationStatus === "automated",
+                      ).length;
 
-              return (
-                <article
-                  key={scenario.id}
-                  className="rounded-2xl border border-slate-900/10 bg-slate-50 p-5"
-                >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <h3 className="text-xl font-black tracking-tight text-slate-950">
-                        {scenario.title}
-                      </h3>
-                      <p className="mt-2 text-sm leading-6 text-slate-600">
-                        {scenario.description || "Sem descrição informada."}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      className="w-fit rounded-lg border border-slate-900/10 bg-white px-3 py-1.5 text-xs font-black text-slate-700"
-                      onClick={() => startEditingScenario(scenario)}
-                    >
-                      Editar cenário
-                    </button>
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <Badge label={scenarioTypeLabels[scenario.scenarioType]} />
-                    <Badge label={priorityLabels[scenario.priority]} />
-                    <Badge label={statusLabels[scenario.status]} />
-                    <Badge label={testLevelLabels[scenario.testLevel]} />
-                    <Badge label={scenario.aiGenerated ? "IA assistida" : "Criado por humano"} />
-                  </div>
-
-                  <div className="mt-4 grid gap-2 text-sm">
-                    <TraceabilityMeta label="Projeto" value={selectedProject?.name ?? scenario.projectId} />
-                    <TraceabilityMeta label="Módulo" value={linkedModule?.name ?? scenario.moduleId} />
-                    <TraceabilityMeta
-                      label="Requisito"
-                      value={linkedRequirement?.title ?? scenario.requirementId}
-                    />
-                    <TraceabilityMeta
-                      label="Regra de negócio"
-                      value={linkedRule?.title ?? scenario.businessRuleId}
-                    />
-                    <TraceabilityMeta label="Cenário de teste" value={scenario.title} />
-                  </div>
-                </article>
-              );
-            })
+                      return (
+                        <tr key={scenario.id} className="border-t border-slate-100 align-top">
+                          <td className="px-4 py-4">
+                            <p className="font-bold text-slate-900">{scenario.title}</p>
+                            <p className="mt-1 max-w-xs text-xs text-slate-500">
+                              {scenario.description || "Sem descrição informada."}
+                            </p>
+                          </td>
+                          <td className="px-4 py-4 text-slate-600">
+                            {linkedModule?.name ?? scenario.moduleId}
+                          </td>
+                          <td className="px-4 py-4 text-slate-600">
+                            <p>{linkedRequirement?.id.toUpperCase() ?? scenario.requirementId}</p>
+                            <p className="mt-1 text-xs text-slate-500">
+                              {linkedRule?.title ?? scenario.businessRuleId}
+                            </p>
+                          </td>
+                          <td className="px-4 py-4">
+                            <Badge label={priorityLabels[scenario.priority]} />
+                          </td>
+                          <td className="px-4 py-4">
+                            <Badge label={statusLabels[scenario.status]} />
+                          </td>
+                          <td className="px-4 py-4 text-slate-600">{linkedCases.length}</td>
+                          <td className="px-4 py-4 text-slate-600">
+                            {automationCount}/{linkedCases.length || 0} com potencial
+                          </td>
+                          <td className="px-4 py-4">
+                            <button
+                              type="button"
+                              className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-black text-slate-700 hover:border-slate-300"
+                              onClick={() => startEditingScenario(scenario)}
+                            >
+                              Editar cenário
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
         </section>
       </div>
@@ -603,11 +635,3 @@ function Badge({ label }: { label: string }) {
   );
 }
 
-function TraceabilityMeta({ label, value }: { label: string; value: string }) {
-  return (
-    <p className="rounded-xl bg-white px-3 py-2 text-slate-600 ring-1 ring-slate-900/10">
-      <span className="font-black text-slate-950">{label}: </span>
-      {value}
-    </p>
-  );
-}

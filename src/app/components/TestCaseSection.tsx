@@ -388,7 +388,7 @@ export function TestCaseSection({
         </div>
       </section>
 
-      <div className="mt-6 grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+      <div className="mt-6 grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
         <section className="rounded-2xl border border-slate-900/10 bg-white p-5">
           <h3 className="text-xl font-black tracking-tight text-slate-950">
             {editingTestCaseId ? "Editar caso de teste" : "Novo caso de teste"}
@@ -587,87 +587,71 @@ export function TestCaseSection({
               </p>
             </section>
           ) : (
-            projectTestCases.map((testCase) => {
-              const linkedModule = modules.find((module) => module.id === testCase.moduleId);
-              const linkedRequirement = requirements.find(
-                (requirement) => requirement.id === testCase.requirementId,
-              );
-              const linkedRule = businessRules.find(
-                (rule) => rule.id === testCase.businessRuleId,
-              );
-              const linkedScenario = scenarios.find(
-                (scenario) => scenario.id === testCase.scenarioId,
-              );
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-left text-sm">
+                  <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="px-4 py-3 font-bold">Caso de teste</th>
+                      <th className="px-4 py-3 font-bold">Objetivo</th>
+                      <th className="px-4 py-3 font-bold">Prioridade</th>
+                      <th className="px-4 py-3 font-bold">Status</th>
+                      <th className="px-4 py-3 font-bold">Nível</th>
+                      <th className="px-4 py-3 font-bold">Automação</th>
+                      <th className="px-4 py-3 font-bold">Rastreabilidade</th>
+                      <th className="px-4 py-3 font-bold">Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {projectTestCases.map((testCase) => {
+                      const linkedRequirement = requirements.find(
+                        (requirement) => requirement.id === testCase.requirementId,
+                      );
+                      const linkedScenario = scenarios.find(
+                        (scenario) => scenario.id === testCase.scenarioId,
+                      );
 
-              return (
-                <article
-                  key={testCase.id}
-                  className="rounded-2xl border border-slate-900/10 bg-slate-50 p-5"
-                >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <h3 className="text-xl font-black tracking-tight text-slate-950">
-                        {testCase.title}
-                      </h3>
-                      <p className="mt-2 text-sm leading-6 text-slate-600">
-                        {testCase.objective}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      className="w-fit rounded-lg border border-slate-900/10 bg-white px-3 py-1.5 text-xs font-black text-slate-700"
-                      onClick={() => startEditingTestCase(testCase)}
-                    >
-                      Editar caso de teste
-                    </button>
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <Badge label={priorityLabels[testCase.priority]} />
-                    <Badge label={statusLabels[testCase.status]} />
-                    <Badge label={testLevelLabels[testCase.testLevel]} />
-                    <Badge label={automationStatusLabels[testCase.automationStatus]} />
-                    <Badge label={testCase.aiGenerated ? "IA assistida" : "Criado por humano"} />
-                  </div>
-
-                  <div className="mt-4 grid gap-3">
-                    <DetailBlock label="Objetivo" value={testCase.objective} />
-                    <DetailBlock
-                      label="Pré-condição"
-                      value={testCase.precondition || "Sem pré-condição informada."}
-                    />
-                    <div className="rounded-xl bg-white px-3 py-2 text-slate-600 ring-1 ring-slate-900/10">
-                      <p className="font-black text-slate-950">Passos:</p>
-                      <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm leading-6">
-                        {testCase.steps.map((step) => (
-                          <li key={step}>{step}</li>
-                        ))}
-                      </ol>
-                    </div>
-                    <DetailBlock label="Resultado esperado" value={testCase.expectedResult} />
-                    <TraceabilityMeta label="Projeto" value={selectedProject?.name ?? testCase.projectId} />
-                    <TraceabilityMeta label="Módulo" value={linkedModule?.name ?? testCase.moduleId} />
-                    <TraceabilityMeta
-                      label="Requisito"
-                      value={linkedRequirement?.title ?? testCase.requirementId}
-                    />
-                    <TraceabilityMeta
-                      label="Regra de negócio"
-                      value={linkedRule?.title ?? testCase.businessRuleId}
-                    />
-                    <TraceabilityMeta
-                      label="Cenário de teste"
-                      value={linkedScenario?.title ?? testCase.scenarioId}
-                    />
-                    <TraceabilityMeta label="Caso de teste" value={testCase.title} />
-                    <TraceabilityMeta
-                      label="Revisado por"
-                      value={testCase.reviewedBy || "Revisão humana pendente"}
-                    />
-                  </div>
-                </article>
-              );
-            })
+                      return (
+                        <tr key={testCase.id} className="border-t border-slate-100 align-top">
+                          <td className="px-4 py-4">
+                            <p className="font-bold text-slate-900">{testCase.id.toUpperCase()}</p>
+                            <p className="mt-1 text-xs text-slate-500">{testCase.title}</p>
+                          </td>
+                          <td className="px-4 py-4 text-slate-600">{testCase.objective}</td>
+                          <td className="px-4 py-4">
+                            <Badge label={priorityLabels[testCase.priority]} />
+                          </td>
+                          <td className="px-4 py-4">
+                            <Badge label={statusLabels[testCase.status]} />
+                          </td>
+                          <td className="px-4 py-4">
+                            <Badge label={testLevelLabels[testCase.testLevel]} />
+                          </td>
+                          <td className="px-4 py-4">
+                            <Badge label={automationStatusLabels[testCase.automationStatus]} />
+                          </td>
+                          <td className="px-4 py-4 text-xs text-slate-600">
+                            <p>{linkedRequirement?.id.toUpperCase() ?? testCase.requirementId}</p>
+                            <p className="mt-1 text-slate-500">
+                              {linkedScenario?.title ?? testCase.scenarioId}
+                            </p>
+                          </td>
+                          <td className="px-4 py-4">
+                            <button
+                              type="button"
+                              className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-black text-slate-700 hover:border-slate-300"
+                              onClick={() => startEditingTestCase(testCase)}
+                            >
+                              Editar caso de teste
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
         </section>
       </div>
@@ -724,20 +708,3 @@ function Badge({ label }: { label: string }) {
   );
 }
 
-function DetailBlock({ label, value }: { label: string; value: string }) {
-  return (
-    <p className="rounded-xl bg-white px-3 py-2 text-sm leading-6 text-slate-600 ring-1 ring-slate-900/10">
-      <span className="font-black text-slate-950">{label}: </span>
-      {value}
-    </p>
-  );
-}
-
-function TraceabilityMeta({ label, value }: { label: string; value: string }) {
-  return (
-    <p className="rounded-xl bg-white px-3 py-2 text-sm leading-6 text-slate-600 ring-1 ring-slate-900/10">
-      <span className="font-black text-slate-950">{label}: </span>
-      {value}
-    </p>
-  );
-}

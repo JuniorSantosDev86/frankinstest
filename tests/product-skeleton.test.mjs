@@ -51,7 +51,11 @@ const testScenarioSectionSource = readFileSync(
   "utf8",
 );
 const testCaseSectionSource = readFileSync("src/app/components/TestCaseSection.tsx", "utf8");
-const productSource = `${pageSource}\n${i18nSource}\n${testScenarioSectionSource}\n${testCaseSectionSource}`;
+const metricCardSource = readFileSync("src/app/components/MetricCard.tsx", "utf8");
+const traceabilityFlowSource = readFileSync("src/app/components/TraceabilityFlow.tsx", "utf8");
+const insightCardsSource = readFileSync("src/app/components/InsightCards.tsx", "utf8");
+const quickActionsSource = readFileSync("src/app/components/QuickActions.tsx", "utf8");
+const productSource = `${pageSource}\n${i18nSource}\n${testScenarioSectionSource}\n${testCaseSectionSource}\n${metricCardSource}\n${traceabilityFlowSource}\n${insightCardsSource}\n${quickActionsSource}`;
 const projectTypesSource = readFileSync("src/lib/projects/types.ts", "utf8");
 const projectServiceSource = readFileSync("src/lib/projects/projectService.ts", "utf8");
 const businessTypesSource = readFileSync("src/lib/business-understanding/types.ts", "utf8");
@@ -86,6 +90,40 @@ test("FrankInTest shell exposes the required navigation sections", () => {
   });
 });
 
+test("premium dashboard copy and Control Tower shell are present", () => {
+  [
+    "Control Tower",
+    "Um workspace para transformar artefatos de produto em artefatos de QA.",
+    "Visão integrada do seu ecossistema de qualidade.",
+    "Últimos 30 dias",
+    "Total de projetos",
+    "Cenários de teste",
+    "Casos de teste",
+    "Riscos críticos",
+    "Candidatos à automação",
+  ].forEach((copy) => {
+    assert.match(productSource, new RegExp(copy));
+  });
+});
+
+test("sidebar navigation includes expected QA workspace items", () => {
+  [
+    "Control Tower",
+    "Projetos",
+    "QA Workspace",
+    "Módulos",
+    "Requisitos",
+    "Regras de Negócio",
+    "Cenários de Teste",
+    "Casos de Teste",
+    "Relatórios",
+    "FrankInDrift",
+    "Configurações",
+  ].forEach((item) => {
+    assert.match(i18nSource, new RegExp(item));
+  });
+});
+
 test("AI-assisted output is framed as structured QA artifacts", () => {
   [
     "Requirement",
@@ -110,11 +148,18 @@ test("product copy keeps safe analysis boundaries", () => {
   assert.match(productSource, /Recommended validation/);
   assert.match(productSource, /require confirmation/i);
 
-  ["Fully tested", "Guaranteed secure", "All bugs found", "Complete vulnerability scan"].forEach(
-    (unsafeClaim) => {
-      assert.doesNotMatch(productSource, new RegExp(unsafeClaim, "i"));
-    },
-  );
+  [
+    "Fully tested",
+    "Guaranteed secure",
+    "All bugs found",
+    "Complete vulnerability scan",
+    "totalmente testado",
+    "segurança garantida",
+    "todos os bugs encontrados",
+    "varredura completa de vulnerabilidades",
+  ].forEach((unsafeClaim) => {
+    assert.doesNotMatch(productSource, new RegExp(unsafeClaim, "i"));
+  });
 });
 
 test("i18n foundation exposes the three supported locales", () => {
@@ -925,8 +970,22 @@ test("test case UI includes simple textarea and ordered-list steps behavior", ()
   assert.match(testCaseSectionSource, /\.split\("\\n"\)/);
   assert.match(testCaseSectionSource, /\.filter\(Boolean\)/);
   assert.match(testCaseSectionSource, /Um passo por linha/);
-  assert.match(testCaseSectionSource, /<ol/);
-  assert.match(testCaseSectionSource, /testCase\.steps\.map/);
+});
+
+test("dashboard traceability, insights, and quick actions sections are present as UI-only cards", () => {
+  [
+    "Rastreabilidade",
+    "Projeto para caso de teste",
+    "Fluxo local MVP",
+    "Check-up de qualidade",
+    "FrankInDrift Insights",
+    "Execucao de testes",
+    "Demo sem ciclos",
+    "Acoes rapidas",
+    "Atalhos operacionais do workspace",
+  ].forEach((copy) => {
+    assert.match(productSource, new RegExp(copy));
+  });
 });
 
 test("test case navigation points to the local MVP section", () => {

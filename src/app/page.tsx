@@ -60,9 +60,14 @@ import {
   type QaMaturity,
   type RiskLevel,
 } from "@/lib/projects/types";
+import { demoTestCases, demoTestScenarios } from "@/lib/test-design/testDesignService";
 import { getMembership } from "@/lib/workspace/access";
+import { InsightCards } from "./components/InsightCards";
+import { MetricCard } from "./components/MetricCard";
+import { QuickActions } from "./components/QuickActions";
 import { TestScenarioSection } from "./components/TestScenarioSection";
 import { TestCaseSection } from "./components/TestCaseSection";
+import { TraceabilityFlow } from "./components/TraceabilityFlow";
 import { defaultLocale, isSupportedLocale, supportedLocales, translations, type Locale } from "./i18n";
 
 const projectStorageKey = "frankintest.block02.projects";
@@ -252,6 +257,54 @@ export default function Home() {
   const activeRequirementModuleId = requirementFormState.moduleId || projectModules[0]?.id || "";
   const activeBusinessRuleRequirementId =
     businessRuleFormState.requirementId || projectRequirements[0]?.id || "";
+  const totalScenarios = demoTestScenarios.length;
+  const totalTestCases = demoTestCases.length;
+  const criticalRisks = businessRules.filter((rule) => rule.priority === "critical").length;
+  const automationCandidates = demoTestCases.filter(
+    (testCase) => testCase.automationStatus === "automation_candidate",
+  ).length;
+  const traceabilityNodes = useMemo(
+    () => [
+      {
+        label: "Projeto",
+        value: selectedProject?.name ?? "Workspace padrão",
+        detail: `${projectModules.length} módulos`,
+      },
+      {
+        label: "Módulo",
+        value: projectModules[0]?.name ?? "Módulo não definido",
+        detail: `${projectRequirements.length} requisitos`,
+      },
+      {
+        label: "Requisito",
+        value: projectRequirements[0]?.id?.toUpperCase() ?? "REQ-demo",
+        detail: projectRequirements[0]?.title ?? "Validação recomendada",
+      },
+      {
+        label: "Regra de negócio",
+        value: projectBusinessRules[0]?.id?.toUpperCase() ?? "RN-demo",
+        detail: projectBusinessRules[0]?.title ?? "Regra requer confirmação",
+      },
+      {
+        label: "Cenário",
+        value: demoTestScenarios[0]?.title ?? "Cenário de teste",
+        detail: `${totalScenarios} cenários no workspace`,
+      },
+      {
+        label: "Caso de teste",
+        value: demoTestCases[0]?.id.toUpperCase() ?? "CT-demo",
+        detail: `${totalTestCases} casos no workspace`,
+      },
+    ],
+    [
+      projectBusinessRules,
+      projectModules,
+      projectRequirements,
+      selectedProject?.name,
+      totalScenarios,
+      totalTestCases,
+    ],
+  );
 
   function resetForm() {
     setFormState(emptyProjectForm);
@@ -520,12 +573,16 @@ export default function Home() {
             <nav className="mt-6 grid gap-2" aria-label="Main navigation">
               {t.navigationItems.map((item) => (
                 <a
-                  key={item.href}
+                  key={`${item.href}-${item.label}`}
                   href={item.href}
-                  className="group rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 transition hover:border-teal-200/60 hover:bg-teal-200/10"
+                  className={`group rounded-xl border px-4 py-3 transition ${
+                    item.href === "#control-tower"
+                      ? "border-teal-200/50 bg-teal-300/20"
+                      : "border-white/10 bg-white/[0.03] hover:border-teal-200/60 hover:bg-teal-200/10"
+                  }`}
                 >
                   <span className="flex items-center justify-between gap-3">
-                    <span className="text-sm font-semibold">{item.label}</span>
+                    <span className="text-sm font-semibold text-slate-100">{item.label}</span>
                     <span className="rounded-full bg-white/10 px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-wide text-slate-300 group-hover:text-teal-100">
                       {item.status}
                     </span>
@@ -546,7 +603,45 @@ export default function Home() {
             id="control-tower"
             className="relative overflow-hidden rounded-[1.5rem] border border-slate-900/10 bg-white/90 p-6 shadow-xl shadow-slate-900/5 backdrop-blur md:p-8"
           >
-            <div className="absolute right-6 top-6 hidden rounded-full border border-teal-700/20 bg-teal-50 px-4 py-2 text-xs font-black uppercase tracking-[0.24em] text-teal-800 md:block">
+            <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-r from-cyan-100/70 via-transparent to-indigo-100/60" />
+
+            <div className="relative z-10 flex flex-wrap items-center justify-end gap-3">
+              <label className="sr-only" htmlFor="hero-locale-selector">
+                {t.languageSelector.label}
+              </label>
+              <select
+                id="hero-locale-selector"
+                aria-label={t.languageSelector.ariaLabel}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 outline-none focus:border-teal-500"
+                data-default-locale={defaultLocale}
+                value={locale}
+                onChange={(event) => {
+                  const nextLocale = event.target.value;
+
+                  if (isSupportedLocale(nextLocale)) {
+                    setLocale(nextLocale);
+                  }
+                }}
+              >
+                {supportedLocales.map((supportedLocale) => (
+                  <option key={supportedLocale.key} value={supportedLocale.key}>
+                    {supportedLocale.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700"
+              >
+                Últimos 30 dias
+              </button>
+              <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-right">
+                <p className="text-sm font-black text-slate-900">{session.user.name}</p>
+                <p className="text-xs text-slate-500">QA Manager</p>
+              </div>
+            </div>
+
+            <div className="relative z-10 mt-5 inline-flex rounded-full border border-teal-700/20 bg-teal-50 px-4 py-2 text-xs font-black uppercase tracking-[0.24em] text-teal-800">
               {t.controlTowerBadge}
             </div>
             <div className="max-w-3xl">
@@ -595,49 +690,44 @@ export default function Home() {
             </div>
 
             <div className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {t.qualitySignals.map((signal) => (
-                <article
-                  key={signal.label}
-                  className="rounded-2xl border border-slate-900/10 bg-slate-50 p-4"
-                >
-                  <div className={`h-1.5 w-16 rounded-full bg-gradient-to-r ${signal.tone}`} />
-                  <p className="mt-5 text-3xl font-black tracking-tight text-slate-950">
-                    {signal.value}
-                  </p>
-                  <p className="mt-1 text-sm font-medium leading-6 text-slate-600">
-                    {signal.label}
-                  </p>
-                </article>
-              ))}
+              <MetricCard
+                title="Total de projetos"
+                value={String(visibleProjects.length)}
+                trend="2 novos este mês"
+                tone="teal"
+              />
+              <MetricCard
+                title="Cenários de teste"
+                value={String(totalScenarios)}
+                trend="18% vs mês anterior"
+                tone="violet"
+              />
+              <MetricCard
+                title="Casos de teste"
+                value={String(totalTestCases)}
+                trend="24% vs mês anterior"
+                tone="blue"
+              />
+              <MetricCard
+                title="Riscos críticos"
+                value={String(criticalRisks)}
+                trend="riscos potenciais"
+                tone="red"
+              />
+              <MetricCard
+                title="Candidatos à automação"
+                value={String(automationCandidates)}
+                trend="validação recomendada"
+                tone="orange"
+              />
             </div>
           </header>
 
-          <section className="grid gap-6 xl:grid-cols-3">
-            {t.pillarCards.map((pillar) => (
-              <article
-                key={pillar.title}
-                className="rounded-[1.5rem] border border-slate-900/10 bg-white/85 p-6 shadow-lg shadow-slate-900/5 backdrop-blur"
-              >
-                <p className="text-xs font-black uppercase tracking-[0.24em] text-teal-700">
-                  {pillar.eyebrow}
-                </p>
-                <h2 className="mt-3 text-2xl font-black tracking-tight text-slate-950">
-                  {pillar.title}
-                </h2>
-                <p className="mt-3 text-sm leading-7 text-slate-600">{pillar.description}</p>
-                <div className="mt-5 flex flex-wrap gap-2">
-                  {pillar.artifacts.map((artifact) => (
-                    <span
-                      key={artifact}
-                      className="rounded-full border border-slate-900/10 bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700"
-                    >
-                      {artifact}
-                    </span>
-                  ))}
-                </div>
-              </article>
-            ))}
-          </section>
+          <TraceabilityFlow nodes={traceabilityNodes} />
+
+          <InsightCards />
+
+          <QuickActions />
 
           <section
             id="projects"
