@@ -63,6 +63,7 @@ import {
 import { demoTestCases, demoTestScenarios } from "@/lib/test-design/testDesignService";
 import { getMembership } from "@/lib/workspace/access";
 import { BugReportSection } from "./components/BugReportSection";
+import { AiUsageSection } from "./components/AiUsageSection";
 import { EvidenceSection } from "./components/EvidenceSection";
 import { InsightCards } from "./components/InsightCards";
 import { MetricCard } from "./components/MetricCard";
@@ -1529,6 +1530,8 @@ export default function Home() {
           <EvidenceSection projects={visibleProjects} />
 
           <ReportSection projects={visibleProjects} />
+
+          <AiUsageSection projects={visibleProjects} />
 
           <section className="grid gap-6 2xl:grid-cols-[1.2fr_0.8fr]">
             <div className="rounded-[1.5rem] border border-slate-900/10 bg-slate-950 p-6 text-white shadow-xl shadow-slate-900/15">

@@ -60,11 +60,12 @@ const testExecutionSectionSource = readFileSync(
 const bugReportSectionSource = readFileSync("src/app/components/BugReportSection.tsx", "utf8");
 const evidenceSectionSource = readFileSync("src/app/components/EvidenceSection.tsx", "utf8");
 const reportSectionSource = readFileSync("src/app/components/ReportSection.tsx", "utf8");
+const aiUsageSectionSource = readFileSync("src/app/components/AiUsageSection.tsx", "utf8");
 const metricCardSource = readFileSync("src/app/components/MetricCard.tsx", "utf8");
 const traceabilityFlowSource = readFileSync("src/app/components/TraceabilityFlow.tsx", "utf8");
 const insightCardsSource = readFileSync("src/app/components/InsightCards.tsx", "utf8");
 const quickActionsSource = readFileSync("src/app/components/QuickActions.tsx", "utf8");
-const productSource = `${pageSource}\n${i18nSource}\n${testScenarioSectionSource}\n${testCaseSectionSource}\n${testSuiteSectionSource}\n${testCycleSectionSource}\n${testExecutionSectionSource}\n${bugReportSectionSource}\n${evidenceSectionSource}\n${reportSectionSource}\n${metricCardSource}\n${traceabilityFlowSource}\n${insightCardsSource}\n${quickActionsSource}`;
+const productSource = `${pageSource}\n${i18nSource}\n${testScenarioSectionSource}\n${testCaseSectionSource}\n${testSuiteSectionSource}\n${testCycleSectionSource}\n${testExecutionSectionSource}\n${bugReportSectionSource}\n${evidenceSectionSource}\n${reportSectionSource}\n${aiUsageSectionSource}\n${metricCardSource}\n${traceabilityFlowSource}\n${insightCardsSource}\n${quickActionsSource}`;
 const projectTypesSource = readFileSync("src/lib/projects/types.ts", "utf8");
 const projectServiceSource = readFileSync("src/lib/projects/projectService.ts", "utf8");
 const businessTypesSource = readFileSync("src/lib/business-understanding/types.ts", "utf8");
@@ -80,6 +81,8 @@ const evidenceTypesSource = readFileSync("src/lib/evidence/types.ts", "utf8");
 const evidenceServiceSource = readFileSync("src/lib/evidence/evidenceService.ts", "utf8");
 const reportTypesSource = readFileSync("src/lib/reports/types.ts", "utf8");
 const reportServiceSource = readFileSync("src/lib/reports/reportService.ts", "utf8");
+const aiUsageTypesSource = readFileSync("src/lib/ai-usage/types.ts", "utf8");
+const aiUsageServiceSource = readFileSync("src/lib/ai-usage/aiUsageService.ts", "utf8");
 const mockSession = loadTsModule("src/lib/auth/mockSession");
 const access = loadTsModule("src/lib/workspace/access");
 const projectTypesModule = loadTsModule("src/lib/projects/types");
@@ -94,6 +97,8 @@ const evidenceTypes = loadTsModule("src/lib/evidence/types");
 const evidenceService = loadTsModule("src/lib/evidence/evidenceService");
 const reportTypesModule = loadTsModule("src/lib/reports/types");
 const reportService = loadTsModule("src/lib/reports/reportService");
+const aiUsageTypes = loadTsModule("src/lib/ai-usage/types");
+const aiUsageService = loadTsModule("src/lib/ai-usage/aiUsageService");
 
 test("FrankInTest shell exposes the required navigation sections", () => {
   [
@@ -195,6 +200,8 @@ test("product copy keeps safe analysis boundaries", () => {
     "pronto para release sem validação",
     "release garantido",
     "qualidade garantida",
+    "vulnerabilidades garantidamente encontradas",
+    "IA garante segurança",
   ].forEach((unsafeClaim) => {
     assert.doesNotMatch(productSource, new RegExp(unsafeClaim, "i"));
   });
@@ -2768,6 +2775,524 @@ test("report UI keeps first render deterministic and loads localStorage after mo
 test("report navigation points to the local MVP section", () => {
   assert.match(i18nSource, /label: "Relatórios", href: "#reports", status: "MVP local"/);
   assert.match(reportSectionSource, /id="reports"/);
+});
+
+test("AI usage model values are explicit and future provider values are metadata only", () => {
+  assert.deepEqual(aiUsageTypes.aiFeatures, [
+    "vulnerability_checkup",
+    "test_case_generation",
+    "bug_summary",
+    "report_assist",
+    "drift_analysis",
+    "business_rule_analysis",
+    "automation_suggestion",
+    "requirement_review",
+  ]);
+  assert.deepEqual(aiUsageTypes.aiInputArtifactTypes, [
+    "project",
+    "module",
+    "requirement",
+    "business_rule",
+    "scenario",
+    "test_case",
+    "suite",
+    "cycle",
+    "execution",
+    "bug",
+    "evidence",
+    "report",
+    "url",
+    "mixed",
+  ]);
+  assert.deepEqual(aiUsageTypes.aiRunStatuses, [
+    "estimated",
+    "queued",
+    "running",
+    "completed",
+    "failed",
+    "cancelled",
+  ]);
+  assert.deepEqual(aiUsageTypes.aiProviders, ["mock", "openai", "anthropic", "google", "other"]);
+  assert.deepEqual(aiUsageTypes.aiCreditTransactionTypes, [
+    "grant",
+    "reserve",
+    "charge",
+    "refund",
+    "adjustment",
+  ]);
+  assert.deepEqual(aiUsageTypes.aiCreditTransactionStatuses, [
+    "pending",
+    "completed",
+    "cancelled",
+  ]);
+
+  assert.equal(aiUsageService.isAiFeature("report_assist"), true);
+  assert.equal(aiUsageService.isAiFeature("chat"), false);
+  assert.equal(aiUsageService.isAiInputArtifactType("business_rule"), true);
+  assert.equal(aiUsageService.isAiRunStatus("completed"), true);
+  assert.equal(aiUsageService.isAiProvider("mock"), true);
+  assert.equal(aiUsageService.isAiCreditTransactionType("reserve"), true);
+  assert.equal(aiUsageService.isAiCreditTransactionStatus("pending"), true);
+  assert.match(aiUsageTypesSource, /AiRun/);
+  assert.match(aiUsageTypesSource, /AiCreditBalance/);
+  assert.match(aiUsageTypesSource, /AiCreditTransaction/);
+});
+
+test("AI run validation keeps AI attached to structured artifacts", () => {
+  const validInput = {
+    projectId: "project_demo_landing",
+    feature: "automation_suggestion",
+    inputArtifactType: "test_case",
+    inputArtifactIds: ["test_case_demo_landing_valid_email_submission"],
+    promptSummary: "Sugerir automacao candidata para caso de teste.",
+    requestedBy: "QA",
+  };
+
+  assert.deepEqual(aiUsageService.validateAiRunInput(validInput), []);
+  assert.deepEqual(aiUsageService.validateAiRunInput({ ...validInput, projectId: "" }), [
+    "ai_run_project_required",
+  ]);
+  assert.deepEqual(
+    aiUsageService.validateAiRunInput({ ...validInput, inputArtifactIds: [] }),
+    ["ai_run_artifact_required"],
+  );
+  assert.deepEqual(
+    aiUsageService.validateAiRunInput({
+      ...validInput,
+      inputArtifactType: "project",
+      inputArtifactIds: [],
+    }),
+    [],
+  );
+  assert.deepEqual(
+    aiUsageService.validateAiRunInput({ ...validInput, promptSummary: "x" }),
+    ["ai_run_prompt_summary_required"],
+  );
+  assert.deepEqual(
+    aiUsageService.validateAiRunInput({ ...validInput, requestedBy: "x" }),
+    ["ai_run_requested_by_required"],
+  );
+});
+
+test("AI estimate validation and credit calculation are deterministic", () => {
+  const validInput = {
+    feature: "test_case_generation",
+    inputText: "12345678",
+    artifactCount: 2,
+  };
+
+  assert.deepEqual(aiUsageService.validateAiRunEstimateInput(validInput), []);
+  assert.deepEqual(aiUsageService.validateAiRunEstimateInput({ ...validInput, inputText: "x" }), [
+    "ai_estimate_input_text_required",
+  ]);
+  assert.deepEqual(
+    aiUsageService.validateAiRunEstimateInput({ ...validInput, artifactCount: -1 }),
+    ["ai_estimate_artifact_count_invalid"],
+  );
+  assert.deepEqual(aiUsageService.estimateAiRunCredits(validInput), {
+    estimatedInputTokens: 242,
+    estimatedOutputTokens: 128,
+    estimatedTotalTokens: 370,
+    estimatedCredits: 1,
+    pricingNote:
+      "Estimativa local deterministica para demonstracao; nao usa tokenizer real, provider real ou cobranca real.",
+  });
+  assert.deepEqual(aiUsageService.createAiRunEstimate(validInput), {
+    estimatedInputTokens: 242,
+    estimatedOutputTokens: 128,
+    estimatedTotalTokens: 370,
+    estimatedCredits: 1,
+    pricingNote:
+      "Estimativa local deterministica para demonstracao; nao usa tokenizer real, provider real ou cobranca real.",
+  });
+});
+
+test("AI credit balance and enough-credit helpers use the local balance formula", () => {
+  const balance = {
+    projectId: "project_custom",
+    includedCredits: 10,
+    purchasedCredits: 5,
+    usedCredits: 4,
+    reservedCredits: 3,
+    availableCredits: 999,
+    updatedAt: "2026-05-13T16:00:00.000Z",
+  };
+
+  assert.equal(aiUsageService.calculateAvailableCredits(balance), 8);
+  assert.deepEqual(aiUsageService.getAiCreditBalance("project_demo_landing"), {
+    projectId: "project_demo_landing",
+    includedCredits: 50,
+    purchasedCredits: 20,
+    reservedCredits: 2,
+    usedCredits: 6,
+    availableCredits: 62,
+    updatedAt: "2026-05-13T16:00:00.000Z",
+  });
+  assert.equal(aiUsageService.hasEnoughCredits("project_demo_landing", 62), true);
+  assert.equal(aiUsageService.hasEnoughCredits("project_demo_landing", 63), false);
+  assert.equal(aiUsageService.hasEnoughCredits("project_missing", 1), false);
+});
+
+test("AI usage listing helpers filter runs and transactions deterministically", () => {
+  assert.deepEqual(
+    aiUsageService.listAiRunsByProject("project_demo_landing").map((aiRun) => aiRun.id),
+    [
+      "ai_run_demo_landing_vulnerability_checkup",
+      "ai_run_demo_landing_test_case_generation",
+      "ai_run_demo_landing_report_assist",
+      "ai_run_demo_landing_automation_estimate",
+    ],
+  );
+  assert.deepEqual(
+    aiUsageService
+      .listAiRunsByFeature("project_demo_landing", "report_assist")
+      .map((aiRun) => aiRun.id),
+    ["ai_run_demo_landing_report_assist"],
+  );
+  assert.deepEqual(
+    aiUsageService
+      .listAiRunsByStatus("project_demo_landing", "completed")
+      .map((aiRun) => aiRun.id),
+    [
+      "ai_run_demo_landing_vulnerability_checkup",
+      "ai_run_demo_landing_test_case_generation",
+      "ai_run_demo_landing_report_assist",
+    ],
+  );
+  assert.equal(aiUsageService.listAiCreditTransactionsByProject("project_demo_landing").length, 5);
+  assert.deepEqual(
+    aiUsageService
+      .listAiCreditTransactionsByRun("ai_run_demo_landing_vulnerability_checkup")
+      .map((transaction) => transaction.transactionType),
+    ["grant", "charge"],
+  );
+});
+
+test("AI run and credit transaction create helpers use injected dates", () => {
+  const now = new Date("2026-05-13T17:00:00.000Z");
+  const aiRun = aiUsageService.createAiRun(
+    {
+      projectId: "project_demo_landing",
+      feature: "automation_suggestion",
+      inputArtifactType: "test_case",
+      inputArtifactIds: [" test_case_demo_landing_valid_email_submission "],
+      promptSummary: "Sugerir automacao candidata para caso de teste.",
+      requestedBy: " QA ",
+    },
+    now,
+  );
+
+  assert.equal(aiRun.id, "ai_run_1778691600000");
+  assert.equal(aiRun.provider, "mock");
+  assert.equal(aiRun.model, "mock-local-estimator");
+  assert.equal(aiRun.status, "estimated");
+  assert.deepEqual(aiRun.inputArtifactIds, ["test_case_demo_landing_valid_email_submission"]);
+  assert.equal(aiRun.promptSummary, "Sugerir automacao candidata para caso de teste.");
+  assert.equal(aiRun.requestedBy, "QA");
+  assert.equal(aiRun.createdAt, "2026-05-13T17:00:00.000Z");
+  assert.equal(aiRun.chargedCredits, 0);
+
+  const reserve = aiUsageService.reserveAiCredits(
+    "project_demo_landing",
+    aiRun.id,
+    2,
+    "Reserva local",
+    now,
+  );
+  const charge = aiUsageService.chargeAiCredits(
+    "project_demo_landing",
+    aiRun.id,
+    2,
+    "Cobranca local",
+    now,
+  );
+  const refund = aiUsageService.refundAiCredits(
+    "project_demo_landing",
+    aiRun.id,
+    1,
+    "Estorno local",
+    now,
+  );
+
+  assert.deepEqual(
+    [reserve.transactionType, reserve.status, charge.transactionType, charge.status],
+    ["reserve", "pending", "charge", "completed"],
+  );
+  assert.deepEqual([refund.transactionType, refund.status, refund.credits], [
+    "refund",
+    "completed",
+    1,
+  ]);
+  assert.equal(reserve.id, "ai_credit_transaction_reserve_1778691600000");
+  assert.equal(charge.createdAt, "2026-05-13T17:00:00.000Z");
+});
+
+test("AI mock run lifecycle helpers update runs with injected dates", () => {
+  const aiRun = aiUsageService.demoAiRuns.find(
+    (run) => run.id === "ai_run_demo_landing_automation_estimate",
+  );
+  const now = new Date("2026-05-13T18:00:00.000Z");
+
+  const queuedRun = aiUsageService.updateAiRunStatus(aiRun, { status: "queued" }, now);
+  const completedRun = aiUsageService.completeMockAiRun(aiRun, 720, 288, 2, now);
+  const failedRun = aiUsageService.failMockAiRun(aiRun, "Falha mock", now);
+  const cancelledRun = aiUsageService.cancelMockAiRun(aiRun, now);
+
+  assert.equal(queuedRun.status, "queued");
+  assert.equal(queuedRun.updatedAt, "2026-05-13T18:00:00.000Z");
+  assert.equal(completedRun.status, "completed");
+  assert.equal(completedRun.actualInputTokens, 720);
+  assert.equal(completedRun.actualOutputTokens, 288);
+  assert.equal(completedRun.chargedCredits, 2);
+  assert.equal(completedRun.completedAt, "2026-05-13T18:00:00.000Z");
+  assert.equal(failedRun.status, "failed");
+  assert.equal(failedRun.errorMessage, "Falha mock");
+  assert.equal(cancelledRun.status, "cancelled");
+  assert.equal(cancelledRun.completedAt, "2026-05-13T18:00:00.000Z");
+  assert.equal(aiRun.status, "estimated");
+  assert.equal(aiRun.chargedCredits, 0);
+});
+
+test("AI credit balance transaction helper applies local reserve charge and refund", () => {
+  const now = new Date("2026-05-13T18:30:00.000Z");
+  const balance = {
+    projectId: "project_demo_landing",
+    includedCredits: 10,
+    purchasedCredits: 5,
+    usedCredits: 2,
+    reservedCredits: 1,
+    availableCredits: 12,
+    updatedAt: "2026-05-13T16:00:00.000Z",
+  };
+
+  const reserve = aiUsageService.createMockAiRunReservation(
+    "project_demo_landing",
+    "ai_run_local",
+    3,
+    now,
+  );
+  const reservedBalance = aiUsageService.applyCreditTransactionToBalance(balance, reserve, now);
+  const charge = aiUsageService.createMockAiRunCharge(
+    "project_demo_landing",
+    "ai_run_local",
+    2,
+    now,
+  );
+  const chargedBalance = aiUsageService.applyCreditTransactionToBalance(
+    reservedBalance,
+    charge,
+    now,
+  );
+  const refund = aiUsageService.createMockAiRunRefund(
+    "project_demo_landing",
+    "ai_run_local",
+    1,
+    now,
+  );
+  const refundedBalance = aiUsageService.applyCreditTransactionToBalance(
+    chargedBalance,
+    refund,
+    now,
+  );
+
+  assert.equal(reserve.transactionType, "reserve");
+  assert.equal(reserve.status, "pending");
+  assert.equal(reservedBalance.reservedCredits, 4);
+  assert.equal(reservedBalance.availableCredits, 9);
+  assert.equal(charge.transactionType, "charge");
+  assert.equal(chargedBalance.usedCredits, 4);
+  assert.equal(chargedBalance.reservedCredits, 2);
+  assert.equal(chargedBalance.availableCredits, 9);
+  assert.equal(refund.transactionType, "refund");
+  assert.equal(refundedBalance.usedCredits, 3);
+  assert.equal(refundedBalance.availableCredits, 10);
+  assert.equal(balance.reservedCredits, 1);
+  assert.equal(balance.usedCredits, 2);
+});
+
+test("AI usage summary includes runs, credits, balances, and transactions", () => {
+  assert.deepEqual(aiUsageService.getAiUsageSummary("project_demo_landing"), {
+    totalRuns: 4,
+    estimatedRuns: 1,
+    queuedRuns: 0,
+    runningRuns: 0,
+    completedRuns: 3,
+    failedRuns: 0,
+    cancelledRuns: 0,
+    totalEstimatedCredits: 8,
+    totalChargedCredits: 6,
+    includedCredits: 50,
+    purchasedCredits: 20,
+    usedCredits: 6,
+    reservedCredits: 2,
+    availableCredits: 62,
+    runsByFeature: {
+      vulnerability_checkup: 1,
+      test_case_generation: 1,
+      bug_summary: 0,
+      report_assist: 1,
+      drift_analysis: 0,
+      business_rule_analysis: 0,
+      automation_suggestion: 1,
+      requirement_review: 0,
+    },
+    runsByStatus: {
+      estimated: 1,
+      queued: 0,
+      running: 0,
+      completed: 3,
+      failed: 0,
+      cancelled: 0,
+    },
+    transactionsCount: 5,
+  });
+});
+
+test("AI usage traceability connects project, AI run, artifact ids, and credit transactions", () => {
+  const traceability = aiUsageService.getAiRunTraceability(
+    "ai_run_demo_landing_test_case_generation",
+  );
+
+  assert.equal(traceability.project.id, "project_demo_landing");
+  assert.equal(traceability.aiRun.id, "ai_run_demo_landing_test_case_generation");
+  assert.equal(traceability.artifactType, "business_rule");
+  assert.deepEqual(traceability.relatedArtifactIds, ["rule_demo_landing_email"]);
+  assert.equal(traceability.transactions.length, 1);
+
+  const projectTraceability =
+    aiUsageService.getProjectAiUsageTraceability("project_demo_landing");
+
+  assert.equal(projectTraceability.project.id, "project_demo_landing");
+  assert.equal(projectTraceability.runCount, 4);
+  assert.equal(projectTraceability.transactionCount, 5);
+  assert.equal(projectTraceability.aiRunTraceability.length, 4);
+});
+
+test("AI usage and credit UI is mounted with local pt-BR sections", () => {
+  assert.match(pageSource, /AiUsageSection/);
+  assert.match(pageSource, /<AiUsageSection projects=\{visibleProjects\}/);
+  assert.match(i18nSource, /IA e créditos/);
+  assert.match(i18nSource, /href: "#ai-usage"/);
+  assert.match(i18nSource, /status: "MVP local"/);
+  assert.match(aiUsageSectionSource, /export function AiUsageSection/);
+  assert.match(aiUsageSectionSource, /id="ai-usage"/);
+
+  [
+    "Uso de IA e créditos",
+    "Projeto em análise",
+    "Saldo de créditos",
+    "Créditos disponíveis",
+    "Créditos incluídos",
+    "Créditos comprados",
+    "Créditos usados",
+    "Créditos reservados",
+    "Resumo de uso",
+    "Histórico de runs de IA",
+    "Histórico de transações",
+    "Estimativa de créditos",
+    "Simulador local de run mock",
+    "Estimar créditos",
+    "Criar run mock",
+    "Reservar créditos",
+    "Marcar como concluído no mock",
+    "Marcar como falhou no mock",
+    "Cancelar run mock",
+    "Reembolsar créditos",
+  ].forEach((copy) => {
+    assert.match(aiUsageSectionSource, new RegExp(copy));
+  });
+});
+
+test("AI usage UI uses foundation helpers, demo data, and localStorage keys", () => {
+  [
+    "frankintest.block08.aiRuns",
+    "frankintest.block08.aiCreditBalances",
+    "frankintest.block08.aiCreditTransactions",
+    "demoAiRuns",
+    "demoAiCreditBalances",
+    "demoAiCreditTransactions",
+    "estimateAiRunCredits",
+    "createAiRun",
+    "getAiUsageSummary",
+    "getAiCreditBalance",
+    "hasEnoughCredits",
+    "reserveAiCredits",
+    "chargeAiCredits",
+    "refundAiCredits",
+    "validateAiRunInput",
+  ].forEach((sourceText) => {
+    assert.match(aiUsageSectionSource, new RegExp(sourceText));
+  });
+});
+
+test("AI usage UI states local mock limitations and avoids provider/billing implementation", () => {
+  [
+    "não chama IA real",
+    "não gera artefatos automaticamente",
+    "não executa provider real",
+    "Estimativa local",
+    "mock local",
+    "requer confirmação",
+    "Provider mock",
+    "Sem billing real",
+    "Sem checkout",
+    "Sem API key",
+  ].forEach((copy) => {
+    assert.match(aiUsageSectionSource, new RegExp(copy));
+  });
+
+  [
+    ["OPENAI", "API", "KEY"].join("_"),
+    ["ANTHROPIC", "API", "KEY"].join("_"),
+    ["GOOGLE", "API", "KEY"].join("_"),
+    ["process", "env"].join("."),
+    ["fetch", "("].join(""),
+    "OpenAI",
+    "Anthropic",
+    "Gemini",
+  ].forEach((forbiddenSource) => {
+    assert.doesNotMatch(aiUsageSectionSource, new RegExp(forbiddenSource.replace("(", "\\(")));
+  });
+});
+
+test("AI usage UI keeps first render deterministic and loads localStorage after mount", () => {
+  assert.match(aiUsageSectionSource, /useState<AiRun\[\]>\(demoAiRuns\)/);
+  assert.match(aiUsageSectionSource, /useState<AiCreditBalance\[\]>\(demoAiCreditBalances\)/);
+  assert.match(
+    aiUsageSectionSource,
+    /useState<AiCreditTransaction\[\]>\(\s*demoAiCreditTransactions\s*\)/,
+  );
+  assert.match(aiUsageSectionSource, /hasLoadedLocalAiUsage/);
+  assert.match(aiUsageSectionSource, /window\.localStorage\.getItem\(aiRunsStorageKey\)/);
+  assert.match(
+    aiUsageSectionSource,
+    /window\.localStorage\.getItem\(aiCreditBalancesStorageKey\)/,
+  );
+  assert.match(
+    aiUsageSectionSource,
+    /window\.localStorage\.getItem\(aiCreditTransactionsStorageKey\)/,
+  );
+  assert.match(aiUsageSectionSource, /if \(!hasLoadedLocalAiUsage\)/);
+  assert.doesNotMatch(aiUsageSectionSource, /suppressHydrationWarning/);
+  assert.doesNotMatch(aiUsageSectionSource, /Date\.now/);
+  assert.doesNotMatch(aiUsageSectionSource, /Math\.random/);
+});
+
+test("AI usage service has no real provider calls, API keys, env vars, or fetch calls", () => {
+  assert.match(aiUsageServiceSource, /provider: "mock"/);
+  assert.match(aiUsageServiceSource, /AI_MOCK_PROVIDER/);
+  [
+    ["OPENAI", "API", "KEY"].join("_"),
+    ["ANTHROPIC", "API", "KEY"].join("_"),
+    ["GOOGLE", "API", "KEY"].join("_"),
+    ["process", "env"].join("."),
+    ["fetch", "("].join(""),
+    "OpenAI",
+    "Anthropic",
+    "Gemini",
+  ].forEach((forbiddenSource) => {
+    assert.doesNotMatch(aiUsageServiceSource, new RegExp(forbiddenSource.replace("(", "\\(")));
+  });
 });
 
 test("dashboard traceability, insights, and quick actions sections are present as UI-only cards", () => {
