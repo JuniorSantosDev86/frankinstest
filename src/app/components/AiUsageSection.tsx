@@ -383,7 +383,7 @@ export function AiUsageSection({ projects }: AiUsageSectionProps) {
       aiRun.projectId,
       aiRun.id,
       refundableCredits,
-      "Reembolso local de run mock; sem checkout.",
+      "Reembolso local de run mock; sem pagamento real.",
       now,
     );
 
@@ -410,7 +410,7 @@ export function AiUsageSection({ projects }: AiUsageSectionProps) {
         </div>
         <div className="grid gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs font-bold text-slate-700 sm:grid-cols-3">
           <span>Sem billing real</span>
-          <span>Sem checkout</span>
+          <span>Sem pagamento real</span>
           <span>Sem API key</span>
         </div>
       </div>

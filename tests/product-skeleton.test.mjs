@@ -65,7 +65,11 @@ const metricCardSource = readFileSync("src/app/components/MetricCard.tsx", "utf8
 const traceabilityFlowSource = readFileSync("src/app/components/TraceabilityFlow.tsx", "utf8");
 const insightCardsSource = readFileSync("src/app/components/InsightCards.tsx", "utf8");
 const quickActionsSource = readFileSync("src/app/components/QuickActions.tsx", "utf8");
-const productSource = `${pageSource}\n${i18nSource}\n${testScenarioSectionSource}\n${testCaseSectionSource}\n${testSuiteSectionSource}\n${testCycleSectionSource}\n${testExecutionSectionSource}\n${bugReportSectionSource}\n${evidenceSectionSource}\n${reportSectionSource}\n${aiUsageSectionSource}\n${metricCardSource}\n${traceabilityFlowSource}\n${insightCardsSource}\n${quickActionsSource}`;
+const workspaceDashboardSource = readFileSync(
+  "src/app/components/WorkspaceDashboard.tsx",
+  "utf8",
+);
+const productSource = `${pageSource}\n${i18nSource}\n${testScenarioSectionSource}\n${testCaseSectionSource}\n${testSuiteSectionSource}\n${testCycleSectionSource}\n${testExecutionSectionSource}\n${bugReportSectionSource}\n${evidenceSectionSource}\n${reportSectionSource}\n${aiUsageSectionSource}\n${metricCardSource}\n${traceabilityFlowSource}\n${insightCardsSource}\n${quickActionsSource}\n${workspaceDashboardSource}`;
 const projectTypesSource = readFileSync("src/lib/projects/types.ts", "utf8");
 const projectServiceSource = readFileSync("src/lib/projects/projectService.ts", "utf8");
 const businessTypesSource = readFileSync("src/lib/business-understanding/types.ts", "utf8");
@@ -125,38 +129,61 @@ test("premium dashboard copy and Control Tower shell are present", () => {
   [
     "Control Tower",
     "Um workspace para transformar artefatos de produto em artefatos de QA.",
-    "Visão integrada do seu ecossistema de qualidade.",
-    "Últimos 30 dias",
-    "Total de projetos",
-    "Cenários de teste",
-    "Casos de teste",
-    "Riscos críticos",
-    "Candidatos à automação",
+    "Organize requisitos, riscos, execuções, bugs, evidências, relatórios e ações",
+    "Assistido por IA",
+    "Projetos ativos",
+    "Execuções",
+    "Bugs abertos",
+    "Evidências",
+    "Créditos de IA",
+    "Domain overview cards",
   ].forEach((copy) => {
     assert.match(productSource, new RegExp(copy));
   });
 });
 
+test("UI architecture groups the workspace into a dashboard and detail area", () => {
+  [
+    "SidebarNav",
+    "TopBar",
+    "DashboardOverview",
+    "ControlTowerCard",
+    "TraceabilityFlow",
+    "DomainOverviewGrid",
+    "DomainOverviewCard",
+    "WorkspaceDetailArea",
+    "workspaceDetailTabs",
+  ].forEach((componentName) => {
+    assert.match(workspaceDashboardSource, new RegExp(componentName));
+  });
+});
+
 test("sidebar navigation includes expected QA workspace items", () => {
   [
+    "Visão geral",
     "Control Tower",
+    "Produto",
     "Projetos",
-    "QA Workspace",
     "Módulos",
     "Requisitos",
-    "Regras de Negócio",
-    "Cenários de Teste",
-    "Casos de Teste",
+    "Regras de negócio",
+    "QA Design",
+    "Cenários de teste",
+    "Casos de teste",
     "Suítes de teste",
+    "Execução",
     "Ciclos de teste",
     "Execução de testes",
+    "Qualidade",
     "Bugs e defeitos",
     "Evidências",
     "Relatórios",
-    "FrankInDrift",
+    "IA",
+    "IA e créditos",
+    "Assistência de design de testes",
     "Configurações",
   ].forEach((item) => {
-    assert.match(i18nSource, new RegExp(item));
+    assert.match(workspaceDashboardSource, new RegExp(item));
   });
 });
 
@@ -3235,7 +3262,7 @@ test("AI usage UI states local mock limitations and avoids provider/billing impl
     "requer confirmação",
     "Provider mock",
     "Sem billing real",
-    "Sem checkout",
+    "Sem pagamento real",
     "Sem API key",
   ].forEach((copy) => {
     assert.match(aiUsageSectionSource, new RegExp(copy));
@@ -3295,44 +3322,70 @@ test("AI usage service has no real provider calls, API keys, env vars, or fetch 
   });
 });
 
-test("dashboard traceability, insights, and quick actions sections are present as UI-only cards", () => {
+test("dashboard traceability, domain overview, and quick actions sections are present as UI-only cards", () => {
   [
-    "Rastreabilidade",
-    "Projeto para caso de teste",
+    "Fluxo de rastreabilidade",
+    "Projeto → requisito → execução → evidência",
     "Fluxo local MVP",
-    "Check-up de qualidade",
-    "FrankInDrift Insights",
-    "Execucao de testes",
-    "Demo sem ciclos",
-    "Acoes rapidas",
-    "Atalhos operacionais do workspace",
+    "Design de Testes",
+    "Bugs & Evidências",
+    "IA e Créditos",
+    "Ações rápidas",
+    "Atalhos para as principais ações do dia a dia.",
   ].forEach((copy) => {
     assert.match(productSource, new RegExp(copy));
   });
 });
 
+test("workspace detail area groups existing CRUD sections by product domain", () => {
+  [
+    'id: "produto"',
+    'id: "qa-design"',
+    'id: "execucao"',
+    'id: "qualidade"',
+    'id: "relatorios"',
+    'id: "ia-creditos"',
+  ].forEach((tabId) => {
+    assert.match(workspaceDashboardSource, new RegExp(tabId));
+  });
+
+  [
+    /activeDetailTab === "qa-design"[\s\S]*<TestScenarioSection/,
+    /activeDetailTab === "qa-design"[\s\S]*<TestCaseSection/,
+    /activeDetailTab === "qa-design"[\s\S]*<TestSuiteSection/,
+    /activeDetailTab === "execucao"[\s\S]*<TestCycleSection/,
+    /activeDetailTab === "execucao"[\s\S]*<TestExecutionSection/,
+    /activeDetailTab === "qualidade"[\s\S]*<BugReportSection/,
+    /activeDetailTab === "qualidade"[\s\S]*<EvidenceSection/,
+    /activeDetailTab === "relatorios"[\s\S]*<ReportSection/,
+    /activeDetailTab === "ia-creditos"[\s\S]*<AiUsageSection/,
+  ].forEach((pattern) => {
+    assert.match(pageSource, pattern);
+  });
+});
+
 test("test case navigation points to the local MVP section", () => {
-  assert.match(i18nSource, /label: "Casos de teste", href: "#test-cases", status: "MVP local"/);
+  assert.match(workspaceDashboardSource, /label: "Casos de teste", href: "#workspace-qa-design-casos"/);
   assert.match(testCaseSectionSource, /id="test-cases"/);
 });
 
 test("test suite navigation points to the local MVP section", () => {
-  assert.match(i18nSource, /label: "Suítes de teste", href: "#test-suites", status: "MVP local"/);
+  assert.match(workspaceDashboardSource, /label: "Suítes de teste", href: "#workspace-qa-design-suites"/);
   assert.match(testSuiteSectionSource, /id="test-suites"/);
 });
 
 test("test execution navigation points to the local MVP section", () => {
   assert.match(
-    i18nSource,
-    /label: "Execução de testes", href: "#test-executions", status: "MVP local"/,
+    workspaceDashboardSource,
+    /label: "Execução de testes", href: "#workspace-execucao-testes"/,
   );
   assert.match(testExecutionSectionSource, /id="test-executions"/);
 });
 
 test("language selector is visible in the application shell", () => {
-  assert.match(pageSource, /<select/);
-  assert.match(pageSource, /supportedLocales\.map/);
-  assert.match(pageSource, /aria-label=\{t\.languageSelector\.ariaLabel\}/);
+  assert.match(workspaceDashboardSource, /<select/);
+  assert.match(workspaceDashboardSource, /locales\.map/);
+  assert.match(pageSource, /localeAriaLabel=\{t\.languageSelector\.ariaLabel\}/);
 });
 
 test("default locale is pt-BR", () => {

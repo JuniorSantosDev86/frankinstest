@@ -683,7 +683,7 @@ export function createMockAiRunRefund(
     projectId,
     aiRunId,
     credits,
-    "Reembolso local de creditos de run mock; sem checkout.",
+    "Reembolso local de creditos de run mock; sem pagamento real.",
     now,
   );
 }

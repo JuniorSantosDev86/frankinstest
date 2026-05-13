@@ -60,21 +60,33 @@ import {
   type QaMaturity,
   type RiskLevel,
 } from "@/lib/projects/types";
-import { demoTestCases, demoTestScenarios } from "@/lib/test-design/testDesignService";
-import { getMembership } from "@/lib/workspace/access";
+import {
+  demoTestCases,
+  demoTestCycles,
+  demoTestExecutions,
+  demoTestScenarios,
+  demoTestSuites,
+} from "@/lib/test-design/testDesignService";
+import { demoBugReports } from "@/lib/bugs/bugService";
+import { demoEvidence } from "@/lib/evidence/evidenceService";
+import { demoReports } from "@/lib/reports/reportService";
+import { demoAiCreditBalances, demoAiRuns } from "@/lib/ai-usage/aiUsageService";
 import { BugReportSection } from "./components/BugReportSection";
 import { AiUsageSection } from "./components/AiUsageSection";
 import { EvidenceSection } from "./components/EvidenceSection";
-import { InsightCards } from "./components/InsightCards";
-import { MetricCard } from "./components/MetricCard";
-import { QuickActions } from "./components/QuickActions";
 import { ReportSection } from "./components/ReportSection";
 import { TestScenarioSection } from "./components/TestScenarioSection";
 import { TestCaseSection } from "./components/TestCaseSection";
 import { TestSuiteSection } from "./components/TestSuiteSection";
 import { TestCycleSection } from "./components/TestCycleSection";
 import { TestExecutionSection } from "./components/TestExecutionSection";
-import { TraceabilityFlow } from "./components/TraceabilityFlow";
+import {
+  AppShell,
+  DashboardOverview,
+  TopBar,
+  WorkspaceDetailArea,
+  workspaceDetailTabs,
+} from "./components/WorkspaceDashboard";
 import { defaultLocale, isSupportedLocale, supportedLocales, translations, type Locale } from "./i18n";
 
 const projectStorageKey = "frankintest.block02.projects";
@@ -178,9 +190,9 @@ export default function Home() {
     useState<BusinessRuleFormState>(emptyBusinessRuleForm);
   const [editingBusinessRuleId, setEditingBusinessRuleId] = useState<string | null>(null);
   const [businessRuleValidationError, setBusinessRuleValidationError] = useState(false);
+  const [activeDetailTab, setActiveDetailTab] = useState("produto");
   const t = translations[locale];
   const session = getMockSession();
-  const membership = getMembership(session.user, session.activeOrganization);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -276,21 +288,25 @@ export default function Home() {
     businessRuleFormState.requirementId || projectRequirements[0]?.id || "";
   const totalScenarios = demoTestScenarios.length;
   const totalTestCases = demoTestCases.length;
-  const criticalRisks = businessRules.filter((rule) => rule.priority === "critical").length;
-  const automationCandidates = demoTestCases.filter(
-    (testCase) => testCase.automationStatus === "automation_candidate",
+  const totalSuites = demoTestSuites.length;
+  const totalExecutions = demoTestExecutions.length;
+  const activeCycles = demoTestCycles.filter((cycle) => cycle.status === "active").length;
+  const openBugs = demoBugReports.filter((bug) =>
+    ["draft", "open", "in_progress", "retest"].includes(bug.status),
   ).length;
+  const criticalBugs = demoBugReports.filter((bug) => bug.severity === "critical").length;
+  const totalEvidence = demoEvidence.length;
+  const totalReports = demoReports.length;
+  const availableAiCredits =
+    demoAiCreditBalances.find((balance) => balance.projectId === activeProjectId)?.availableCredits ??
+    demoAiCreditBalances[0]?.availableCredits ??
+    0;
   const traceabilityNodes = useMemo(
     () => [
       {
         label: "Projeto",
         value: selectedProject?.name ?? "Workspace padrão",
         detail: `${projectModules.length} módulos`,
-      },
-      {
-        label: "Módulo",
-        value: projectModules[0]?.name ?? "Módulo não definido",
-        detail: `${projectRequirements.length} requisitos`,
       },
       {
         label: "Requisito",
@@ -312,14 +328,49 @@ export default function Home() {
         value: demoTestCases[0]?.id.toUpperCase() ?? "CT-demo",
         detail: `${totalTestCases} casos no workspace`,
       },
+      {
+        label: "Suíte",
+        value: demoTestSuites[0]?.name ?? "Suíte de teste",
+        detail: `${totalSuites} suítes no workspace`,
+      },
+      {
+        label: "Ciclo",
+        value: demoTestCycles[0]?.name ?? "Ciclo de teste",
+        detail: `${demoTestCycles.length} ciclos no workspace`,
+      },
+      {
+        label: "Execução",
+        value: demoTestExecutions[0]?.status ?? "not_run",
+        detail: `${totalExecutions} execuções locais`,
+      },
+      {
+        label: "Bug",
+        value: demoBugReports[0]?.title ?? "Bug report",
+        detail: `${openBugs} bugs abertos`,
+      },
+      {
+        label: "Evidência",
+        value: demoEvidence[0]?.title ?? "Evidência",
+        detail: `${totalEvidence} evidências`,
+      },
+      {
+        label: "Relatório",
+        value: demoReports[0]?.title ?? "Relatório",
+        detail: `${totalReports} relatórios`,
+      },
     ],
     [
+      openBugs,
       projectBusinessRules,
       projectModules,
       projectRequirements,
       selectedProject?.name,
+      totalEvidence,
+      totalExecutions,
+      totalReports,
       totalScenarios,
       totalTestCases,
+      totalSuites,
     ],
   );
 
@@ -535,217 +586,55 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[var(--background)] text-[var(--foreground)]">
-      <div className="pointer-events-none fixed inset-0 -z-10 bg-[linear-gradient(135deg,#f8faf7_0%,#eef7f2_42%,#e1ece8_100%)]" />
+    <AppShell
+      topBar={
+        <TopBar
+          activeProjectName={selectedProject?.name ?? "Workspace padrão"}
+          activeProjectId={activeProjectId}
+          projects={visibleProjects}
+          locale={locale}
+          locales={supportedLocales}
+          localeLabel={t.languageSelector.label}
+          localeAriaLabel={t.languageSelector.ariaLabel}
+          userName={session.user.name}
+          onProjectChange={(projectId) => {
+            setSelectedProjectId(projectId);
+            resetModuleForm();
+            setRequirementFormState(emptyRequirementForm);
+            setBusinessRuleFormState(emptyBusinessRuleForm);
+          }}
+          onLocaleChange={(nextLocale) => {
+            if (isSupportedLocale(nextLocale)) {
+              setLocale(nextLocale);
+            }
+          }}
+        />
+      }
+    >
+      <DashboardOverview
+        activeProjectName={selectedProject?.name ?? "Workspace padrão"}
+        projectCount={visibleProjects.length}
+        executionCount={totalExecutions}
+        openBugCount={openBugs}
+        evidenceCount={totalEvidence}
+        aiCredits={availableAiCredits}
+        scenarioCount={totalScenarios}
+        testCaseCount={totalTestCases}
+        suiteCount={totalSuites}
+        activeCycleCount={activeCycles}
+        criticalBugCount={criticalBugs}
+        reportCount={totalReports}
+        aiRunsCount={demoAiRuns.length}
+        traceabilityNodes={traceabilityNodes}
+      />
 
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-4 sm:px-6 lg:flex-row lg:py-6">
-        <aside className="lg:sticky lg:top-6 lg:h-[calc(100vh-3rem)] lg:w-72">
-          <div className="flex h-full flex-col rounded-[1.5rem] border border-slate-900/10 bg-slate-950 p-5 text-white shadow-2xl shadow-slate-900/20">
-            <div className="flex items-center gap-3">
-              <div className="grid size-11 place-items-center rounded-xl bg-teal-300 text-sm font-black text-slate-950">
-                FIT
-              </div>
-              <div>
-                <p className="text-lg font-black tracking-tight">FrankInTest</p>
-                <p className="text-xs font-medium uppercase tracking-[0.24em] text-teal-200">
-                  QA Lead SaaS
-                </p>
-              </div>
-            </div>
-
-            <label className="mt-6 grid gap-2 text-xs font-bold uppercase tracking-[0.18em] text-slate-300">
-              {t.languageSelector.label}
-              <select
-                aria-label={t.languageSelector.ariaLabel}
-                className="w-full rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2 text-sm font-semibold normal-case tracking-normal text-white outline-none transition hover:border-teal-200/60 focus:border-teal-200"
-                data-default-locale={defaultLocale}
-                value={locale}
-                onChange={(event) => {
-                  const nextLocale = event.target.value;
-
-                  if (isSupportedLocale(nextLocale)) {
-                    setLocale(nextLocale);
-                  }
-                }}
-              >
-                {supportedLocales.map((supportedLocale) => (
-                  <option key={supportedLocale.key} value={supportedLocale.key}>
-                    {supportedLocale.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <section className="mt-5 rounded-2xl border border-teal-200/20 bg-teal-200/10 p-4">
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-teal-100">
-                {t.auth.demoLabel}
-              </p>
-              <p className="mt-2 text-sm font-semibold text-white">
-                {t.auth.signedInAs} {session.user.name}
-              </p>
-              <p className="mt-1 text-xs leading-5 text-slate-300">{session.user.email}</p>
-              <p className="mt-3 text-xs leading-5 text-slate-300">{t.auth.localOnly}</p>
-            </section>
-
-            <nav className="mt-6 grid gap-2" aria-label="Main navigation">
-              {t.navigationItems.map((item) => (
-                <a
-                  key={`${item.href}-${item.label}`}
-                  href={item.href}
-                  className={`group rounded-xl border px-4 py-3 transition ${
-                    item.href === "#control-tower"
-                      ? "border-teal-200/50 bg-teal-300/20"
-                      : "border-white/10 bg-white/[0.03] hover:border-teal-200/60 hover:bg-teal-200/10"
-                  }`}
-                >
-                  <span className="flex items-center justify-between gap-3">
-                    <span className="text-sm font-semibold text-slate-100">{item.label}</span>
-                    <span className="rounded-full bg-white/10 px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-wide text-slate-300 group-hover:text-teal-100">
-                      {item.status}
-                    </span>
-                  </span>
-                </a>
-              ))}
-            </nav>
-
-            <div className="mt-auto rounded-2xl border border-teal-200/20 bg-teal-200/10 p-4">
-              <p className="text-sm font-bold text-teal-100">{t.productRule.title}</p>
-              <p className="mt-2 text-sm leading-6 text-slate-300">{t.productRule.description}</p>
-            </div>
-          </div>
-        </aside>
-
-        <section className="flex min-w-0 flex-1 flex-col gap-6">
-          <header
-            id="control-tower"
-            className="relative overflow-hidden rounded-[1.5rem] border border-slate-900/10 bg-white/90 p-6 shadow-xl shadow-slate-900/5 backdrop-blur md:p-8"
-          >
-            <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-r from-cyan-100/70 via-transparent to-indigo-100/60" />
-
-            <div className="relative z-10 flex flex-wrap items-center justify-end gap-3">
-              <label className="sr-only" htmlFor="hero-locale-selector">
-                {t.languageSelector.label}
-              </label>
-              <select
-                id="hero-locale-selector"
-                aria-label={t.languageSelector.ariaLabel}
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 outline-none focus:border-teal-500"
-                data-default-locale={defaultLocale}
-                value={locale}
-                onChange={(event) => {
-                  const nextLocale = event.target.value;
-
-                  if (isSupportedLocale(nextLocale)) {
-                    setLocale(nextLocale);
-                  }
-                }}
-              >
-                {supportedLocales.map((supportedLocale) => (
-                  <option key={supportedLocale.key} value={supportedLocale.key}>
-                    {supportedLocale.label}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700"
-              >
-                Últimos 30 dias
-              </button>
-              <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-right">
-                <p className="text-sm font-black text-slate-900">{session.user.name}</p>
-                <p className="text-xs text-slate-500">QA Manager</p>
-              </div>
-            </div>
-
-            <div className="relative z-10 mt-5 inline-flex rounded-full border border-teal-700/20 bg-teal-50 px-4 py-2 text-xs font-black uppercase tracking-[0.24em] text-teal-800">
-              {t.controlTowerBadge}
-            </div>
-            <div className="max-w-3xl">
-              <p className="text-sm font-black uppercase tracking-[0.28em] text-teal-700">
-                {t.hero.eyebrow}
-              </p>
-              <h1 className="mt-4 text-4xl font-black tracking-tight text-slate-950 sm:text-5xl lg:text-6xl">
-                {t.hero.title}
-              </h1>
-              <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
-                {t.hero.description}
-              </p>
-            </div>
-
-            <div className="mt-8 grid gap-3 lg:grid-cols-[1fr_1fr]">
-              <section className="rounded-2xl border border-slate-900/10 bg-slate-50 p-4">
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">
-                  {t.workspace.activeWorkspace}
-                </p>
-                <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">
-                  {session.activeOrganization.name}
-                </h2>
-                <div className="mt-4 grid gap-2 text-sm text-slate-600 sm:grid-cols-3">
-                  <p>
-                    <span className="font-bold text-slate-900">{t.workspace.plan}: </span>
-                    {session.activeOrganization.plan}
-                  </p>
-                  <p>
-                    <span className="font-bold text-slate-900">{t.workspace.credits}: </span>
-                    {session.activeOrganization.creditBalance}
-                  </p>
-                  <p>
-                    <span className="font-bold text-slate-900">{t.workspace.role}: </span>
-                    {membership?.role ?? "viewer"}
-                  </p>
-                </div>
-              </section>
-
-              <section className="rounded-2xl border border-amber-900/15 bg-amber-50 p-4">
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-800">
-                  {t.auth.demoLabel}
-                </p>
-                <p className="mt-2 text-sm font-semibold leading-6 text-amber-950">{t.auth.mode}</p>
-                <p className="mt-2 text-sm leading-6 text-amber-900">{t.auth.localOnly}</p>
-              </section>
-            </div>
-
-            <div className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <MetricCard
-                title="Total de projetos"
-                value={String(visibleProjects.length)}
-                trend="2 novos este mês"
-                tone="teal"
-              />
-              <MetricCard
-                title="Cenários de teste"
-                value={String(totalScenarios)}
-                trend="18% vs mês anterior"
-                tone="violet"
-              />
-              <MetricCard
-                title="Casos de teste"
-                value={String(totalTestCases)}
-                trend="24% vs mês anterior"
-                tone="blue"
-              />
-              <MetricCard
-                title="Riscos críticos"
-                value={String(criticalRisks)}
-                trend="riscos potenciais"
-                tone="red"
-              />
-              <MetricCard
-                title="Candidatos à automação"
-                value={String(automationCandidates)}
-                trend="validação recomendada"
-                tone="orange"
-              />
-            </div>
-          </header>
-
-          <TraceabilityFlow nodes={traceabilityNodes} />
-
-          <InsightCards />
-
-          <QuickActions />
-
+      <WorkspaceDetailArea
+        activeTab={activeDetailTab}
+        tabs={workspaceDetailTabs}
+        onChange={setActiveDetailTab}
+      >
+        {activeDetailTab === "produto" ? (
+          <>
           <section
             id="projects"
             className="rounded-[1.5rem] border border-slate-900/10 bg-white/90 p-6 shadow-xl shadow-slate-900/5 md:p-8"
@@ -1490,120 +1379,135 @@ export default function Home() {
             </div>
           </section>
 
-          <TestScenarioSection
-            projects={visibleProjects}
-            modules={modules}
-            requirements={requirements}
-            businessRules={businessRules}
-          />
+          </>
+        ) : null}
 
-          <TestCaseSection
-            projects={visibleProjects}
-            modules={modules}
-            requirements={requirements}
-            businessRules={businessRules}
-          />
+        {activeDetailTab === "qa-design" ? (
+          <div className="grid gap-6">
+            <TestScenarioSection
+              projects={visibleProjects}
+              modules={modules}
+              requirements={requirements}
+              businessRules={businessRules}
+            />
 
-          <TestSuiteSection
-            projects={visibleProjects}
-            modules={modules}
-            requirements={requirements}
-            businessRules={businessRules}
-          />
+            <TestCaseSection
+              projects={visibleProjects}
+              modules={modules}
+              requirements={requirements}
+              businessRules={businessRules}
+            />
 
-          <TestCycleSection
-            projects={visibleProjects}
-            modules={modules}
-            requirements={requirements}
-            businessRules={businessRules}
-          />
+            <TestSuiteSection
+              projects={visibleProjects}
+              modules={modules}
+              requirements={requirements}
+              businessRules={businessRules}
+            />
+          </div>
+        ) : null}
 
-          <TestExecutionSection
-            projects={visibleProjects}
-            modules={modules}
-            requirements={requirements}
-            businessRules={businessRules}
-          />
+        {activeDetailTab === "execucao" ? (
+          <div className="grid gap-6">
+            <TestCycleSection
+              projects={visibleProjects}
+              modules={modules}
+              requirements={requirements}
+              businessRules={businessRules}
+            />
 
-          <BugReportSection projects={visibleProjects} modules={modules} />
+            <TestExecutionSection
+              projects={visibleProjects}
+              modules={modules}
+              requirements={requirements}
+              businessRules={businessRules}
+            />
+          </div>
+        ) : null}
 
-          <EvidenceSection projects={visibleProjects} />
+        {activeDetailTab === "qualidade" ? (
+          <div className="grid gap-6">
+            <BugReportSection projects={visibleProjects} modules={modules} />
+            <EvidenceSection projects={visibleProjects} />
+          </div>
+        ) : null}
 
-          <ReportSection projects={visibleProjects} />
+        {activeDetailTab === "relatorios" ? <ReportSection projects={visibleProjects} /> : null}
 
+        {activeDetailTab === "ia-creditos" ? (
           <AiUsageSection projects={visibleProjects} />
+        ) : null}
+      </WorkspaceDetailArea>
 
-          <section className="grid gap-6 2xl:grid-cols-[1.2fr_0.8fr]">
-            <div className="rounded-[1.5rem] border border-slate-900/10 bg-slate-950 p-6 text-white shadow-xl shadow-slate-900/15">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <p className="text-sm font-black uppercase tracking-[0.26em] text-teal-200">
-                    {t.applicationSections.eyebrow}
-                  </p>
-                  <h2 className="mt-3 text-3xl font-black tracking-tight">
-                    {t.applicationSections.title}
-                  </h2>
-                </div>
-                <p className="max-w-sm text-sm leading-6 text-slate-300">
-                  {t.applicationSections.description}
-                </p>
-              </div>
-
-              <div className="mt-6 grid gap-3 md:grid-cols-2">
-                {t.workspaceModules.map((module) => (
-                  <article
-                    id={module.id}
-                    key={module.id}
-                    className="rounded-2xl border border-white/10 bg-white/[0.04] p-5"
-                  >
-                    <h3 className="text-lg font-black">{module.name}</h3>
-                    <p className="mt-2 text-sm leading-6 text-slate-300">{module.summary}</p>
-                    <p className="mt-4 rounded-xl bg-white/10 px-3 py-2 text-xs font-bold text-teal-100">
-                      {module.status}
-                    </p>
-                  </article>
-                ))}
-              </div>
+      <section className="grid gap-6 2xl:grid-cols-[1.2fr_0.8fr]">
+        <div className="rounded-[1.5rem] border border-slate-900/10 bg-slate-950 p-6 text-white shadow-xl shadow-slate-900/15">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.26em] text-teal-200">
+                FrankInDrift / Futuro
+              </p>
+              <h2 className="mt-3 text-3xl font-black tracking-tight">
+                Camada futura de drift e recomendações
+              </h2>
             </div>
+            <p className="max-w-sm text-sm leading-6 text-slate-300">
+              Placeholder visual para documentação viva, riscos potenciais e validação recomendada.
+            </p>
+          </div>
 
-            <aside className="grid gap-6">
-              <section className="rounded-[1.5rem] border border-slate-900/10 bg-white/85 p-6 shadow-lg shadow-slate-900/5">
-                <p className="text-sm font-black uppercase tracking-[0.24em] text-teal-700">
-                  {t.artifactFirstAi.eyebrow}
+          <div className="mt-6 grid gap-3 md:grid-cols-2">
+            {t.workspaceModules.map((module) => (
+              <article
+                id={module.id}
+                key={module.id}
+                className="rounded-2xl border border-white/10 bg-white/[0.04] p-5"
+              >
+                <h3 className="text-lg font-black">{module.name}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-300">{module.summary}</p>
+                <p className="mt-4 rounded-xl bg-white/10 px-3 py-2 text-xs font-bold text-teal-100">
+                  {module.status}
                 </p>
-                <h2 className="mt-3 text-2xl font-black tracking-tight text-slate-950">
-                  {t.artifactFirstAi.title}
-                </h2>
-                <div className="mt-5 flex flex-wrap gap-2">
-                  {t.artifactTypes.map((artifact) => (
-                    <span
-                      key={artifact}
-                      className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm ring-1 ring-slate-900/10"
-                    >
-                      {artifact}
-                    </span>
-                  ))}
-                </div>
-              </section>
+              </article>
+            ))}
+          </div>
+        </div>
 
-              <section className="rounded-[1.5rem] border border-amber-900/15 bg-amber-50/90 p-6 shadow-lg shadow-amber-900/5">
-                <p className="text-sm font-black uppercase tracking-[0.24em] text-amber-800">
-                  {t.safeBoundaries.eyebrow}
-                </p>
-                <ul className="mt-4 grid gap-3">
-                  {t.safeBoundaries.items.map((boundary) => (
-                    <li key={boundary} className="flex gap-3 text-sm leading-6 text-amber-950">
-                      <span className="mt-2 size-2 shrink-0 rounded-full bg-amber-600" />
-                      <span>{boundary}</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            </aside>
+        <aside className="grid gap-6">
+          <section className="rounded-[1.5rem] border border-slate-900/10 bg-white p-6 shadow-sm shadow-slate-200/70">
+            <p className="text-sm font-black uppercase tracking-[0.24em] text-teal-700">
+              {t.artifactFirstAi.eyebrow}
+            </p>
+            <h2 className="mt-3 text-2xl font-black tracking-tight text-slate-950">
+              {t.artifactFirstAi.title}
+            </h2>
+            <div className="mt-5 flex flex-wrap gap-2">
+              {t.artifactTypes.map((artifact) => (
+                <span
+                  key={artifact}
+                  className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm ring-1 ring-slate-900/10"
+                >
+                  {artifact}
+                </span>
+              ))}
+            </div>
           </section>
-        </section>
-      </div>
-    </main>
+
+          <section className="rounded-[1.5rem] border border-amber-900/15 bg-amber-50 p-6 shadow-sm shadow-amber-900/5">
+            <p className="text-sm font-black uppercase tracking-[0.24em] text-amber-800">
+              {t.safeBoundaries.eyebrow}
+            </p>
+            <ul className="mt-4 grid gap-3">
+              {t.safeBoundaries.items.map((boundary) => (
+                <li key={boundary} className="flex gap-3 text-sm leading-6 text-amber-950">
+                  <span className="mt-2 size-2 shrink-0 rounded-full bg-amber-600" />
+                  <span>{boundary}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </aside>
+      </section>
+    </AppShell>
   );
 }
 
