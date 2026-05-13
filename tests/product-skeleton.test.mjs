@@ -57,11 +57,13 @@ const testExecutionSectionSource = readFileSync(
   "src/app/components/TestExecutionSection.tsx",
   "utf8",
 );
+const bugReportSectionSource = readFileSync("src/app/components/BugReportSection.tsx", "utf8");
+const evidenceSectionSource = readFileSync("src/app/components/EvidenceSection.tsx", "utf8");
 const metricCardSource = readFileSync("src/app/components/MetricCard.tsx", "utf8");
 const traceabilityFlowSource = readFileSync("src/app/components/TraceabilityFlow.tsx", "utf8");
 const insightCardsSource = readFileSync("src/app/components/InsightCards.tsx", "utf8");
 const quickActionsSource = readFileSync("src/app/components/QuickActions.tsx", "utf8");
-const productSource = `${pageSource}\n${i18nSource}\n${testScenarioSectionSource}\n${testCaseSectionSource}\n${testSuiteSectionSource}\n${testCycleSectionSource}\n${testExecutionSectionSource}\n${metricCardSource}\n${traceabilityFlowSource}\n${insightCardsSource}\n${quickActionsSource}`;
+const productSource = `${pageSource}\n${i18nSource}\n${testScenarioSectionSource}\n${testCaseSectionSource}\n${testSuiteSectionSource}\n${testCycleSectionSource}\n${testExecutionSectionSource}\n${bugReportSectionSource}\n${evidenceSectionSource}\n${metricCardSource}\n${traceabilityFlowSource}\n${insightCardsSource}\n${quickActionsSource}`;
 const projectTypesSource = readFileSync("src/lib/projects/types.ts", "utf8");
 const projectServiceSource = readFileSync("src/lib/projects/projectService.ts", "utf8");
 const businessTypesSource = readFileSync("src/lib/business-understanding/types.ts", "utf8");
@@ -71,6 +73,10 @@ const businessServiceSource = readFileSync(
 );
 const testDesignTypesSource = readFileSync("src/lib/test-design/types.ts", "utf8");
 const testDesignServiceSource = readFileSync("src/lib/test-design/testDesignService.ts", "utf8");
+const bugTypesSource = readFileSync("src/lib/bugs/types.ts", "utf8");
+const bugServiceSource = readFileSync("src/lib/bugs/bugService.ts", "utf8");
+const evidenceTypesSource = readFileSync("src/lib/evidence/types.ts", "utf8");
+const evidenceServiceSource = readFileSync("src/lib/evidence/evidenceService.ts", "utf8");
 const mockSession = loadTsModule("src/lib/auth/mockSession");
 const access = loadTsModule("src/lib/workspace/access");
 const projectTypesModule = loadTsModule("src/lib/projects/types");
@@ -79,6 +85,10 @@ const businessTypes = loadTsModule("src/lib/business-understanding/types");
 const businessService = loadTsModule("src/lib/business-understanding/businessUnderstandingService");
 const testDesignTypes = loadTsModule("src/lib/test-design/types");
 const testDesignService = loadTsModule("src/lib/test-design/testDesignService");
+const bugTypes = loadTsModule("src/lib/bugs/types");
+const bugService = loadTsModule("src/lib/bugs/bugService");
+const evidenceTypes = loadTsModule("src/lib/evidence/types");
+const evidenceService = loadTsModule("src/lib/evidence/evidenceService");
 
 test("FrankInTest shell exposes the required navigation sections", () => {
   [
@@ -90,6 +100,8 @@ test("FrankInTest shell exposes the required navigation sections", () => {
     "Suítes de teste",
     "Ciclos de teste",
     "Execução de testes",
+    "Bugs e defeitos",
+    "Evidências",
     "Check-up",
     "Reports",
     "FrankInDrift",
@@ -128,6 +140,8 @@ test("sidebar navigation includes expected QA workspace items", () => {
     "Suítes de teste",
     "Ciclos de teste",
     "Execução de testes",
+    "Bugs e defeitos",
+    "Evidências",
     "Relatórios",
     "FrankInDrift",
     "Configurações",
@@ -172,6 +186,25 @@ test("product copy keeps safe analysis boundaries", () => {
   ].forEach((unsafeClaim) => {
     assert.doesNotMatch(productSource, new RegExp(unsafeClaim, "i"));
   });
+});
+
+test("MetricCard remains a deterministic presentational component", () => {
+  assert.match(metricCardSource, /export function MetricCard/);
+  assert.match(metricCardSource, /\{value\}/);
+  assert.doesNotMatch(metricCardSource, /localStorage/);
+  assert.doesNotMatch(metricCardSource, /Date\.now/);
+  assert.doesNotMatch(metricCardSource, /Math\.random/);
+  assert.doesNotMatch(metricCardSource, /suppressHydrationWarning/);
+});
+
+test("dashboard metrics use deterministic first-render workspace state", () => {
+  assert.match(pageSource, /useState<Project\[\]>\(demoProjects\)/);
+  assert.match(pageSource, /useState<ProductModule\[\]>\(demoProductModules\)/);
+  assert.match(pageSource, /hasLoadedLocalWorkspace/);
+  assert.match(pageSource, /window\.localStorage\.getItem\(projectStorageKey\)/);
+  assert.match(pageSource, /if \(!hasLoadedLocalWorkspace\)/);
+  assert.doesNotMatch(pageSource, /Date\.now\(\)/);
+  assert.doesNotMatch(pageSource, /Math\.random\(\)/);
 });
 
 test("i18n foundation exposes the three supported locales", () => {
@@ -1817,6 +1850,558 @@ test("test execution UI preserves relationship labels and scope limitations", ()
   ].forEach((copy) => {
     assert.match(testExecutionSectionSource, new RegExp(copy));
   });
+});
+
+test("bug report model values match Block 06A scope", () => {
+  assert.deepEqual(bugTypes.bugSeverities, ["low", "medium", "high", "critical"]);
+  assert.deepEqual(bugTypes.bugPriorities, ["low", "medium", "high", "critical"]);
+  assert.deepEqual(bugTypes.bugStatuses, [
+    "draft",
+    "open",
+    "in_progress",
+    "retest",
+    "resolved",
+    "closed",
+    "rejected",
+  ]);
+  assert.match(bugTypesSource, /BugReport/);
+  assert.match(bugServiceSource, /demoBugReports/);
+});
+
+test("bug report input validation accepts supported values and rejects invalid values", () => {
+  const validInput = {
+    projectId: "project_demo_landing",
+    moduleId: "module_demo_landing_conversion",
+    executionId: "test_execution_demo_landing_release_invalid_email_failed",
+    title: "Invalid email accepted",
+    description: "Lead form accepts invalid email format.",
+    stepsToReproduce: ["Open landing page", "Submit invalid email"],
+    actualResult: "Submission is accepted.",
+    expectedResult: "Submission is blocked with validation feedback.",
+    severity: "high",
+    priority: "critical",
+    status: "open",
+    environment: "Chrome staging",
+    createdBy: "user_demo_qa_lead",
+  };
+
+  assert.deepEqual(bugService.validateBugReportInput(validInput), []);
+  assert.equal(bugService.isBugSeverity("critical"), true);
+  assert.equal(bugService.isBugSeverity("urgent"), false);
+  assert.equal(bugService.isBugPriority("high"), true);
+  assert.equal(bugService.isBugStatus("retest"), true);
+  assert.deepEqual(
+    bugService.validateBugReportInput({
+      ...validInput,
+      projectId: "",
+      moduleId: "",
+      title: "",
+      description: "",
+      stepsToReproduce: ["x"],
+      actualResult: "",
+      expectedResult: "",
+      severity: "urgent",
+      priority: "later",
+      status: "blocked",
+      environment: "",
+      createdBy: "x",
+    }),
+    [
+      "bug_project_required",
+      "bug_module_required",
+      "bug_title_required",
+      "bug_description_required",
+      "bug_step_required",
+      "bug_actual_result_required",
+      "bug_expected_result_required",
+      "invalid_bug_severity",
+      "invalid_bug_priority",
+      "invalid_bug_status",
+      "bug_environment_required",
+      "bug_created_by_required",
+    ],
+  );
+  assert.deepEqual(bugService.validateBugReportInput({ ...validInput, stepsToReproduce: [] }), [
+    "bug_steps_required",
+  ]);
+
+  const bugReport = bugService.createBugReport(
+    validInput,
+    new Date("2026-05-13T12:00:00.000Z"),
+  );
+  assert.equal(bugReport.id, "bug_report_1778673600000");
+  assert.equal(bugReport.executionId, validInput.executionId);
+  assert.deepEqual(bugReport.stepsToReproduce, ["Open landing page", "Submit invalid email"]);
+  assert.equal(bugReport.createdAt, "2026-05-13T12:00:00.000Z");
+});
+
+test("bug report listing and counting helpers filter deterministic demo bugs", () => {
+  assert.deepEqual(
+    bugService
+      .listBugReportsByProject("project_demo_landing")
+      .map((bugReport) => bugReport.id)
+      .sort(),
+    [
+      "bug_demo_landing_invalid_email_open",
+      "bug_demo_landing_mobile_cta_draft",
+      "bug_demo_landing_validation_feedback_retest",
+    ],
+  );
+  assert.deepEqual(
+    bugService
+      .listBugReportsByModule("module_demo_landing_conversion")
+      .map((bugReport) => bugReport.id)
+      .sort(),
+    ["bug_demo_landing_invalid_email_open", "bug_demo_landing_validation_feedback_retest"],
+  );
+  assert.deepEqual(
+    bugService
+      .listBugReportsByExecution("test_execution_demo_landing_release_invalid_email_failed")
+      .map((bugReport) => bugReport.status)
+      .sort(),
+    ["open", "retest"],
+  );
+  assert.deepEqual(
+    bugService
+      .listBugReportsByStatus("project_demo_landing", "draft")
+      .map((bugReport) => bugReport.id),
+    ["bug_demo_landing_mobile_cta_draft"],
+  );
+  assert.deepEqual(
+    bugService
+      .listBugReportsBySeverity("project_demo_saas", "critical")
+      .map((bugReport) => bugReport.id),
+    ["bug_demo_saas_environment_blocked_open"],
+  );
+  assert.equal(bugService.countBugReportsByProject("project_demo_landing"), 3);
+  assert.equal(
+    bugService.countBugReportsByExecution(
+      "test_execution_demo_landing_release_invalid_email_failed",
+    ),
+    2,
+  );
+});
+
+test("bug report summary counts status, severity, and execution linkage", () => {
+  assert.deepEqual(bugService.getBugReportSummary("project_demo_landing"), {
+    totalBugs: 3,
+    draftBugs: 1,
+    openBugs: 1,
+    inProgressBugs: 0,
+    retestBugs: 1,
+    resolvedBugs: 0,
+    closedBugs: 0,
+    rejectedBugs: 0,
+    criticalBugs: 0,
+    highBugs: 1,
+    linkedToExecutionBugs: 2,
+    bugsByStatus: {
+      draft: 1,
+      open: 1,
+      in_progress: 0,
+      retest: 1,
+      resolved: 0,
+      closed: 0,
+      rejected: 0,
+    },
+    bugsBySeverity: {
+      low: 0,
+      medium: 2,
+      high: 1,
+      critical: 0,
+    },
+  });
+});
+
+test("bug report traceability connects module and execution context", () => {
+  const bugTraceability = bugService.getBugReportTraceability(
+    "bug_demo_landing_invalid_email_open",
+  );
+
+  assert.equal(bugTraceability.project.id, "project_demo_landing");
+  assert.equal(bugTraceability.module.id, "module_demo_landing_conversion");
+  assert.equal(
+    bugTraceability.execution.id,
+    "test_execution_demo_landing_release_invalid_email_failed",
+  );
+  assert.equal(
+    bugTraceability.testCase.id,
+    "test_case_demo_landing_invalid_email_rejected",
+  );
+  assert.equal(bugTraceability.testSuite.id, "test_suite_demo_landing_smoke");
+  assert.equal(bugTraceability.testCycle.id, "test_cycle_demo_landing_release_completed");
+  assert.equal(bugTraceability.requirement.id, "requirement_demo_landing_form");
+  assert.equal(bugTraceability.businessRule.id, "rule_demo_landing_email");
+  assert.equal(bugTraceability.scenario.id, "scenario_demo_landing_invalid_email");
+
+  assert.deepEqual(bugService.getBugReportTraceability("bug_missing"), {
+    project: null,
+    module: null,
+    requirement: null,
+    businessRule: null,
+    scenario: null,
+    testCase: null,
+    testSuite: null,
+    testCycle: null,
+    execution: null,
+    bugReport: null,
+  });
+});
+
+test("execution and module bug traceability helpers expose linked bugs", () => {
+  const executionTraceability = bugService.getExecutionBugTraceability(
+    "test_execution_demo_landing_release_invalid_email_failed",
+  );
+  assert.equal(executionTraceability.execution.status, "failed");
+  assert.equal(executionTraceability.bugCount, 2);
+  assert.deepEqual(
+    executionTraceability.bugReports.map((bugReport) => bugReport.id).sort(),
+    ["bug_demo_landing_invalid_email_open", "bug_demo_landing_validation_feedback_retest"],
+  );
+
+  const moduleTraceability = bugService.getModuleBugTraceability(
+    "module_demo_landing_conversion",
+  );
+  assert.equal(moduleTraceability.project.id, "project_demo_landing");
+  assert.equal(moduleTraceability.module.id, "module_demo_landing_conversion");
+  assert.equal(moduleTraceability.bugCount, 2);
+});
+
+test("bug report UI source exists and exposes the pt-BR section", () => {
+  assert.match(pageSource, /BugReportSection/);
+  assert.match(bugReportSectionSource, /Bugs e defeitos/);
+  assert.match(bugReportSectionSource, /Projeto em análise/);
+  assert.match(bugReportSectionSource, /Resumo de bugs/);
+  assert.match(bugReportSectionSource, /Novo bug/);
+  assert.match(bugReportSectionSource, /Editar bug/);
+});
+
+test("bug report UI uses local persistence and bug service helpers", () => {
+  assert.match(bugReportSectionSource, /frankintest\.block06\.bugReports/);
+  assert.match(bugReportSectionSource, /frankintest\.block05\.testExecutions/);
+  assert.match(bugReportSectionSource, /demoBugReports/);
+  assert.match(bugReportSectionSource, /validateBugReportInput/);
+  assert.match(bugReportSectionSource, /createBugReport/);
+  assert.match(bugReportSectionSource, /updateBugReport/);
+  assert.match(bugReportSectionSource, /getBugReportSummary/);
+  assert.match(bugReportSectionSource, /listBugReportsByProject/);
+});
+
+test("bug report UI includes steps textarea and ordered list behavior", () => {
+  assert.match(bugReportSectionSource, /Passos para reproduzir/);
+  assert.match(bugReportSectionSource, /textarea/);
+  assert.match(bugReportSectionSource, /\.split\("\\n"\)/);
+  assert.match(bugReportSectionSource, /\.filter\(Boolean\)/);
+  assert.match(bugReportSectionSource, /<ol/);
+  assert.match(bugReportSectionSource, /stepsToReproduce\.map/);
+});
+
+test("bug report UI preserves relationship labels and scope limitations", () => {
+  [
+    "Projeto -&gt; Módulo -&gt; Bug",
+    "Projeto -&gt; Módulo -&gt; Execução -&gt; Bug",
+    "Projeto",
+    "Módulo",
+    "Execução",
+    "Bug",
+    "Módulo afetado",
+    "Execução vinculada",
+    "Sem execução vinculada",
+    "Falha vinculada",
+    "Bloqueio vinculado",
+    "Resultado atual",
+    "Resultado esperado",
+    "Severidade",
+    "Prioridade",
+    "Status",
+    "Ambiente",
+    "Criado por",
+    "Persistência local de demonstração via localStorage",
+    "Evidências ainda não são anexadas neste bloco.",
+    "Bugs ainda não geram relatórios automaticamente.",
+  ].forEach((copy) => {
+    assert.match(bugReportSectionSource, new RegExp(copy));
+  });
+});
+
+test("bug report navigation points to the local MVP section", () => {
+  assert.match(i18nSource, /label: "Bugs e defeitos", href: "#bugs", status: "MVP local"/);
+  assert.match(bugReportSectionSource, /id="bugs"/);
+});
+
+test("evidence model values match Block 06C scope", () => {
+  assert.deepEqual(evidenceTypes.evidenceTypes, [
+    "screenshot",
+    "video",
+    "log",
+    "document",
+    "url",
+    "note",
+  ]);
+  assert.deepEqual(evidenceTypes.evidenceSources, [
+    "manual",
+    "execution",
+    "bug_report",
+    "imported",
+  ]);
+  assert.deepEqual(evidenceTypes.evidenceStatuses, [
+    "draft",
+    "attached",
+    "needs_review",
+    "archived",
+  ]);
+  assert.match(evidenceTypesSource, /Evidence/);
+  assert.match(evidenceServiceSource, /demoEvidence/);
+});
+
+test("evidence input validation accepts supported values and rejects invalid values", () => {
+  const validInput = {
+    projectId: "project_demo_landing",
+    bugReportId: "bug_demo_landing_invalid_email_open",
+    executionId: "test_execution_demo_landing_release_invalid_email_failed",
+    title: "Invalid email screenshot",
+    description: "Reference showing invalid email accepted.",
+    evidenceType: "screenshot",
+    source: "bug_report",
+    reference: "local reference path",
+    status: "attached",
+    capturedBy: "user_demo_qa_lead",
+    capturedAt: "2026-05-13",
+  };
+
+  assert.deepEqual(evidenceService.validateEvidenceInput(validInput), []);
+  assert.equal(evidenceService.isEvidenceType("screenshot"), true);
+  assert.equal(evidenceService.isEvidenceType("image"), false);
+  assert.equal(evidenceService.isEvidenceSource("execution"), true);
+  assert.equal(evidenceService.isEvidenceStatus("needs_review"), true);
+  assert.deepEqual(
+    evidenceService.validateEvidenceInput({
+      ...validInput,
+      projectId: "",
+      bugReportId: "",
+      executionId: "",
+      title: "",
+      description: "",
+      evidenceType: "image",
+      source: "scanner",
+      reference: "",
+      status: "published",
+      capturedBy: "x",
+      capturedAt: "not-a-date",
+    }),
+    [
+      "evidence_project_required",
+      "evidence_link_required",
+      "evidence_title_required",
+      "evidence_description_required",
+      "invalid_evidence_type",
+      "invalid_evidence_source",
+      "evidence_reference_required",
+      "invalid_evidence_status",
+      "evidence_captured_by_required",
+      "invalid_evidence_captured_at",
+    ],
+  );
+
+  const evidence = evidenceService.createEvidence(
+    validInput,
+    new Date("2026-05-13T13:00:00.000Z"),
+  );
+  assert.equal(evidence.id, "evidence_1778677200000");
+  assert.equal(evidence.bugReportId, validInput.bugReportId);
+  assert.equal(evidence.executionId, validInput.executionId);
+  assert.equal(evidence.createdAt, "2026-05-13T13:00:00.000Z");
+});
+
+test("evidence listing and counting helpers filter deterministic demo evidence", () => {
+  assert.deepEqual(
+    evidenceService
+      .listEvidenceByProject("project_demo_landing")
+      .map((item) => item.id)
+      .sort(),
+    [
+      "evidence_demo_execution_cycle_url",
+      "evidence_demo_invalid_email_screenshot",
+      "evidence_demo_mobile_viewport_note",
+    ],
+  );
+  assert.deepEqual(
+    evidenceService
+      .listEvidenceByBugReport("bug_demo_landing_invalid_email_open")
+      .map((item) => item.evidenceType),
+    ["screenshot"],
+  );
+  assert.deepEqual(
+    evidenceService
+      .listEvidenceByExecution("test_execution_demo_saas_auth_boundary_blocked")
+      .map((item) => item.id),
+    ["evidence_demo_environment_unavailable_log"],
+  );
+  assert.deepEqual(
+    evidenceService
+      .listEvidenceByType("project_demo_landing", "note")
+      .map((item) => item.id),
+    ["evidence_demo_mobile_viewport_note"],
+  );
+  assert.deepEqual(
+    evidenceService
+      .listEvidenceByStatus("project_demo_landing", "needs_review")
+      .map((item) => item.id),
+    ["evidence_demo_execution_cycle_url"],
+  );
+  assert.equal(evidenceService.countEvidenceByProject("project_demo_landing"), 3);
+  assert.equal(
+    evidenceService.countEvidenceByBugReport("bug_demo_landing_invalid_email_open"),
+    1,
+  );
+  assert.equal(
+    evidenceService.countEvidenceByExecution(
+      "test_execution_demo_landing_release_invalid_email_failed",
+    ),
+    1,
+  );
+});
+
+test("evidence summary counts type, status, and linkage", () => {
+  assert.deepEqual(evidenceService.getEvidenceSummary("project_demo_landing"), {
+    totalEvidence: 3,
+    screenshotEvidence: 1,
+    videoEvidence: 0,
+    logEvidence: 0,
+    documentEvidence: 0,
+    urlEvidence: 1,
+    noteEvidence: 1,
+    attachedEvidence: 1,
+    evidenceNeedingReview: 1,
+    linkedToBugEvidence: 2,
+    linkedToExecutionEvidence: 2,
+    evidenceByType: {
+      screenshot: 1,
+      video: 0,
+      log: 0,
+      document: 0,
+      url: 1,
+      note: 1,
+    },
+    evidenceByStatus: {
+      draft: 1,
+      attached: 1,
+      needs_review: 1,
+      archived: 0,
+    },
+  });
+});
+
+test("evidence traceability connects bug and execution context", () => {
+  const traceability = evidenceService.getEvidenceTraceability(
+    "evidence_demo_invalid_email_screenshot",
+  );
+
+  assert.equal(traceability.project.id, "project_demo_landing");
+  assert.equal(traceability.module.id, "module_demo_landing_conversion");
+  assert.equal(traceability.bugReport.id, "bug_demo_landing_invalid_email_open");
+  assert.equal(
+    traceability.execution.id,
+    "test_execution_demo_landing_release_invalid_email_failed",
+  );
+  assert.equal(traceability.testCase.id, "test_case_demo_landing_invalid_email_rejected");
+  assert.equal(traceability.testSuite.id, "test_suite_demo_landing_smoke");
+  assert.equal(traceability.testCycle.id, "test_cycle_demo_landing_release_completed");
+  assert.equal(traceability.requirement.id, "requirement_demo_landing_form");
+  assert.equal(traceability.businessRule.id, "rule_demo_landing_email");
+  assert.equal(traceability.scenario.id, "scenario_demo_landing_invalid_email");
+
+  assert.deepEqual(evidenceService.getEvidenceTraceability("evidence_missing"), {
+    project: null,
+    module: null,
+    requirement: null,
+    businessRule: null,
+    scenario: null,
+    testCase: null,
+    testSuite: null,
+    testCycle: null,
+    execution: null,
+    bugReport: null,
+    evidence: null,
+  });
+});
+
+test("bug and execution evidence traceability helpers expose linked evidence", () => {
+  const bugTraceability = evidenceService.getBugEvidenceTraceability(
+    "bug_demo_landing_invalid_email_open",
+  );
+  assert.equal(bugTraceability.bugReport.id, "bug_demo_landing_invalid_email_open");
+  assert.equal(bugTraceability.evidenceCount, 1);
+  assert.equal(bugTraceability.evidence[0].id, "evidence_demo_invalid_email_screenshot");
+
+  const executionTraceability = evidenceService.getExecutionEvidenceTraceability(
+    "test_execution_demo_landing_release_invalid_email_failed",
+  );
+  assert.equal(executionTraceability.execution.status, "failed");
+  assert.equal(executionTraceability.evidenceCount, 1);
+  assert.equal(executionTraceability.evidence[0].evidenceType, "screenshot");
+});
+
+test("evidence UI source exists and exposes the pt-BR section", () => {
+  assert.match(pageSource, /EvidenceSection/);
+  assert.match(evidenceSectionSource, /Evidências/);
+  assert.match(evidenceSectionSource, /Projeto em análise/);
+  assert.match(evidenceSectionSource, /Resumo de evidências/);
+  assert.match(evidenceSectionSource, /Nova evidência/);
+  assert.match(evidenceSectionSource, /Editar evidência/);
+});
+
+test("evidence UI uses local persistence and evidence service helpers", () => {
+  assert.match(evidenceSectionSource, /frankintest\.block06\.evidence/);
+  assert.match(evidenceSectionSource, /frankintest\.block06\.bugReports/);
+  assert.match(evidenceSectionSource, /frankintest\.block05\.testExecutions/);
+  assert.match(evidenceSectionSource, /demoEvidence/);
+  assert.match(evidenceSectionSource, /validateEvidenceInput/);
+  assert.match(evidenceSectionSource, /createEvidence/);
+  assert.match(evidenceSectionSource, /updateEvidence/);
+  assert.match(evidenceSectionSource, /getEvidenceSummary/);
+  assert.match(evidenceSectionSource, /listEvidenceByProject/);
+});
+
+test("evidence UI preserves relationship labels and scope limitations", () => {
+  [
+    "Projeto -&gt; Bug -&gt; Evidência",
+    "Projeto -&gt; Execução -&gt; Evidência",
+    "Projeto",
+    "Bug",
+    "Execução",
+    "Evidência",
+    "Bug vinculado",
+    "Execução vinculada",
+    "Sem bug vinculado",
+    "Sem execução vinculada",
+    "Tipo de evidência",
+    "Origem",
+    "Referência",
+    "Status",
+    "Capturado por",
+    "Capturado em",
+    "Print",
+    "Vídeo",
+    "Log",
+    "Documento",
+    "URL",
+    "Nota",
+    "Manual",
+    "Execução",
+    "Bug report",
+    "Importado",
+    "Persistência local de demonstração via localStorage",
+    "Este bloco registra apenas metadados/referências; upload real de arquivos será implementado depois.",
+    "Evidências ainda não geram relatórios automaticamente.",
+  ].forEach((copy) => {
+    assert.match(evidenceSectionSource, new RegExp(copy));
+  });
+});
+
+test("evidence navigation points to the local MVP section", () => {
+  assert.match(i18nSource, /label: "Evidências", href: "#evidence", status: "MVP local"/);
+  assert.match(evidenceSectionSource, /id="evidence"/);
 });
 
 test("dashboard traceability, insights, and quick actions sections are present as UI-only cards", () => {

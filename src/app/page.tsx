@@ -62,6 +62,8 @@ import {
 } from "@/lib/projects/types";
 import { demoTestCases, demoTestScenarios } from "@/lib/test-design/testDesignService";
 import { getMembership } from "@/lib/workspace/access";
+import { BugReportSection } from "./components/BugReportSection";
+import { EvidenceSection } from "./components/EvidenceSection";
 import { InsightCards } from "./components/InsightCards";
 import { MetricCard } from "./components/MetricCard";
 import { QuickActions } from "./components/QuickActions";
@@ -154,46 +156,11 @@ const emptyBusinessRuleForm: BusinessRuleFormState = {
 
 export default function Home() {
   const [locale, setLocale] = useState<Locale>(defaultLocale);
-  const [projects, setProjects] = useState<Project[]>(() => {
-    if (typeof window === "undefined") {
-      return demoProjects;
-    }
-
-    const storedProjects = window.localStorage.getItem(projectStorageKey);
-
-    return storedProjects ? (JSON.parse(storedProjects) as Project[]) : demoProjects;
-  });
-  const [modules, setModules] = useState<ProductModule[]>(() => {
-    if (typeof window === "undefined") {
-      return demoProductModules;
-    }
-
-    const storedModules = window.localStorage.getItem(moduleStorageKey);
-
-    return storedModules ? (JSON.parse(storedModules) as ProductModule[]) : demoProductModules;
-  });
-  const [requirements, setRequirements] = useState<Requirement[]>(() => {
-    if (typeof window === "undefined") {
-      return demoRequirements;
-    }
-
-    const storedRequirements = window.localStorage.getItem(requirementStorageKey);
-
-    return storedRequirements
-      ? (JSON.parse(storedRequirements) as Requirement[])
-      : demoRequirements;
-  });
-  const [businessRules, setBusinessRules] = useState<BusinessRule[]>(() => {
-    if (typeof window === "undefined") {
-      return demoBusinessRules;
-    }
-
-    const storedBusinessRules = window.localStorage.getItem(businessRuleStorageKey);
-
-    return storedBusinessRules
-      ? (JSON.parse(storedBusinessRules) as BusinessRule[])
-      : demoBusinessRules;
-  });
+  const [projects, setProjects] = useState<Project[]>(demoProjects);
+  const [modules, setModules] = useState<ProductModule[]>(demoProductModules);
+  const [requirements, setRequirements] = useState<Requirement[]>(demoRequirements);
+  const [businessRules, setBusinessRules] = useState<BusinessRule[]>(demoBusinessRules);
+  const [hasLoadedLocalWorkspace, setHasLoadedLocalWorkspace] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState(() => demoProjects[0]?.id ?? "");
   const [formState, setFormState] = useState<ProjectFormState>(emptyProjectForm);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
@@ -214,20 +181,65 @@ export default function Home() {
   const membership = getMembership(session.user, session.activeOrganization);
 
   useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const storedProjects = window.localStorage.getItem(projectStorageKey);
+      const storedModules = window.localStorage.getItem(moduleStorageKey);
+      const storedRequirements = window.localStorage.getItem(requirementStorageKey);
+      const storedBusinessRules = window.localStorage.getItem(businessRuleStorageKey);
+
+      if (storedProjects) {
+        setProjects(JSON.parse(storedProjects) as Project[]);
+      }
+
+      if (storedModules) {
+        setModules(JSON.parse(storedModules) as ProductModule[]);
+      }
+
+      if (storedRequirements) {
+        setRequirements(JSON.parse(storedRequirements) as Requirement[]);
+      }
+
+      if (storedBusinessRules) {
+        setBusinessRules(JSON.parse(storedBusinessRules) as BusinessRule[]);
+      }
+
+      setHasLoadedLocalWorkspace(true);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!hasLoadedLocalWorkspace) {
+      return;
+    }
+
     window.localStorage.setItem(projectStorageKey, JSON.stringify(projects));
-  }, [projects]);
+  }, [hasLoadedLocalWorkspace, projects]);
 
   useEffect(() => {
+    if (!hasLoadedLocalWorkspace) {
+      return;
+    }
+
     window.localStorage.setItem(moduleStorageKey, JSON.stringify(modules));
-  }, [modules]);
+  }, [hasLoadedLocalWorkspace, modules]);
 
   useEffect(() => {
+    if (!hasLoadedLocalWorkspace) {
+      return;
+    }
+
     window.localStorage.setItem(requirementStorageKey, JSON.stringify(requirements));
-  }, [requirements]);
+  }, [hasLoadedLocalWorkspace, requirements]);
 
   useEffect(() => {
+    if (!hasLoadedLocalWorkspace) {
+      return;
+    }
+
     window.localStorage.setItem(businessRuleStorageKey, JSON.stringify(businessRules));
-  }, [businessRules]);
+  }, [businessRules, hasLoadedLocalWorkspace]);
 
   const visibleProjects = useMemo(
     () => projects.filter((project) => project.organizationId === session.activeOrganization.id),
@@ -1510,6 +1522,10 @@ export default function Home() {
             requirements={requirements}
             businessRules={businessRules}
           />
+
+          <BugReportSection projects={visibleProjects} modules={modules} />
+
+          <EvidenceSection projects={visibleProjects} />
 
           <section className="grid gap-6 2xl:grid-cols-[1.2fr_0.8fr]">
             <div className="rounded-[1.5rem] border border-slate-900/10 bg-slate-950 p-6 text-white shadow-xl shadow-slate-900/15">
