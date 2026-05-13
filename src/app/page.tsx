@@ -67,6 +67,7 @@ import { EvidenceSection } from "./components/EvidenceSection";
 import { InsightCards } from "./components/InsightCards";
 import { MetricCard } from "./components/MetricCard";
 import { QuickActions } from "./components/QuickActions";
+import { ReportSection } from "./components/ReportSection";
 import { TestScenarioSection } from "./components/TestScenarioSection";
 import { TestCaseSection } from "./components/TestCaseSection";
 import { TestSuiteSection } from "./components/TestSuiteSection";
@@ -1526,6 +1527,8 @@ export default function Home() {
           <BugReportSection projects={visibleProjects} modules={modules} />
 
           <EvidenceSection projects={visibleProjects} />
+
+          <ReportSection projects={visibleProjects} />
 
           <section className="grid gap-6 2xl:grid-cols-[1.2fr_0.8fr]">
             <div className="rounded-[1.5rem] border border-slate-900/10 bg-slate-950 p-6 text-white shadow-xl shadow-slate-900/15">

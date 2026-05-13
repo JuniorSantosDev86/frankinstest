@@ -59,11 +59,12 @@ const testExecutionSectionSource = readFileSync(
 );
 const bugReportSectionSource = readFileSync("src/app/components/BugReportSection.tsx", "utf8");
 const evidenceSectionSource = readFileSync("src/app/components/EvidenceSection.tsx", "utf8");
+const reportSectionSource = readFileSync("src/app/components/ReportSection.tsx", "utf8");
 const metricCardSource = readFileSync("src/app/components/MetricCard.tsx", "utf8");
 const traceabilityFlowSource = readFileSync("src/app/components/TraceabilityFlow.tsx", "utf8");
 const insightCardsSource = readFileSync("src/app/components/InsightCards.tsx", "utf8");
 const quickActionsSource = readFileSync("src/app/components/QuickActions.tsx", "utf8");
-const productSource = `${pageSource}\n${i18nSource}\n${testScenarioSectionSource}\n${testCaseSectionSource}\n${testSuiteSectionSource}\n${testCycleSectionSource}\n${testExecutionSectionSource}\n${bugReportSectionSource}\n${evidenceSectionSource}\n${metricCardSource}\n${traceabilityFlowSource}\n${insightCardsSource}\n${quickActionsSource}`;
+const productSource = `${pageSource}\n${i18nSource}\n${testScenarioSectionSource}\n${testCaseSectionSource}\n${testSuiteSectionSource}\n${testCycleSectionSource}\n${testExecutionSectionSource}\n${bugReportSectionSource}\n${evidenceSectionSource}\n${reportSectionSource}\n${metricCardSource}\n${traceabilityFlowSource}\n${insightCardsSource}\n${quickActionsSource}`;
 const projectTypesSource = readFileSync("src/lib/projects/types.ts", "utf8");
 const projectServiceSource = readFileSync("src/lib/projects/projectService.ts", "utf8");
 const businessTypesSource = readFileSync("src/lib/business-understanding/types.ts", "utf8");
@@ -77,6 +78,8 @@ const bugTypesSource = readFileSync("src/lib/bugs/types.ts", "utf8");
 const bugServiceSource = readFileSync("src/lib/bugs/bugService.ts", "utf8");
 const evidenceTypesSource = readFileSync("src/lib/evidence/types.ts", "utf8");
 const evidenceServiceSource = readFileSync("src/lib/evidence/evidenceService.ts", "utf8");
+const reportTypesSource = readFileSync("src/lib/reports/types.ts", "utf8");
+const reportServiceSource = readFileSync("src/lib/reports/reportService.ts", "utf8");
 const mockSession = loadTsModule("src/lib/auth/mockSession");
 const access = loadTsModule("src/lib/workspace/access");
 const projectTypesModule = loadTsModule("src/lib/projects/types");
@@ -89,6 +92,8 @@ const bugTypes = loadTsModule("src/lib/bugs/types");
 const bugService = loadTsModule("src/lib/bugs/bugService");
 const evidenceTypes = loadTsModule("src/lib/evidence/types");
 const evidenceService = loadTsModule("src/lib/evidence/evidenceService");
+const reportTypesModule = loadTsModule("src/lib/reports/types");
+const reportService = loadTsModule("src/lib/reports/reportService");
 
 test("FrankInTest shell exposes the required navigation sections", () => {
   [
@@ -179,10 +184,17 @@ test("product copy keeps safe analysis boundaries", () => {
     "Guaranteed secure",
     "All bugs found",
     "Complete vulnerability scan",
+    "totally tested",
+    "guaranteed secure",
+    "all bugs found",
+    "complete vulnerability scan",
     "totalmente testado",
     "segurança garantida",
     "todos os bugs encontrados",
     "varredura completa de vulnerabilidades",
+    "pronto para release sem validação",
+    "release garantido",
+    "qualidade garantida",
   ].forEach((unsafeClaim) => {
     assert.doesNotMatch(productSource, new RegExp(unsafeClaim, "i"));
   });
@@ -2402,6 +2414,360 @@ test("evidence UI preserves relationship labels and scope limitations", () => {
 test("evidence navigation points to the local MVP section", () => {
   assert.match(i18nSource, /label: "Evidências", href: "#evidence", status: "MVP local"/);
   assert.match(evidenceSectionSource, /id="evidence"/);
+});
+
+test("report type, status, and scope values match Block 07", () => {
+  assert.deepEqual(reportTypesModule.reportTypes, [
+    "qa_status",
+    "execution_summary",
+    "bug_summary",
+    "evidence_summary",
+    "release_review",
+    "stakeholder_update",
+  ]);
+  assert.deepEqual(reportTypesModule.reportStatuses, [
+    "draft",
+    "ready",
+    "needs_review",
+    "archived",
+  ]);
+  assert.deepEqual(reportTypesModule.reportScopes, [
+    "project",
+    "cycle",
+    "bug",
+    "evidence",
+    "mixed",
+  ]);
+
+  assert.match(reportTypesSource, /Report/);
+  assert.match(reportTypesSource, /ReportInput/);
+  assert.match(reportTypesSource, /ReportSummary/);
+  assert.match(reportServiceSource, /demoReports/);
+});
+
+test("report validation accepts complete input and rejects unsupported values", () => {
+  const validInput = {
+    projectId: "project_demo_landing",
+    title: "Relatório local",
+    description: "Descrição local",
+    reportType: "qa_status",
+    status: "draft",
+    scope: "project",
+    linkedCycleIds: [],
+    linkedExecutionIds: [],
+    linkedBugReportIds: [],
+    linkedEvidenceIds: [],
+    summary: "Sumário local",
+    risks: ["Risco local"],
+    recommendations: ["Recomendação local"],
+    conclusion: "Conclusão local",
+    createdBy: "QA",
+  };
+
+  assert.equal(reportService.isReportType("qa_status"), true);
+  assert.equal(reportService.isReportStatus("ready"), true);
+  assert.equal(reportService.isReportScope("mixed"), true);
+  assert.deepEqual(reportService.validateReportInput(validInput), []);
+
+  assert.deepEqual(reportService.validateReportInput({ ...validInput, projectId: "" }), [
+    "report_project_required",
+  ]);
+  assert.match(
+    reportService
+      .validateReportInput({
+        ...validInput,
+        title: "A",
+        description: "B",
+        reportType: "unsupported",
+        status: "unsupported",
+        scope: "unsupported",
+        summary: "C",
+        conclusion: "D",
+        createdBy: "Q",
+        risks: ["x"],
+        recommendations: ["y"],
+      })
+      .join(","),
+    /report_title_required/,
+  );
+  assert.match(
+    reportService
+      .validateReportInput({
+        ...validInput,
+        reportType: "unsupported",
+        status: "unsupported",
+        scope: "unsupported",
+      })
+      .join(","),
+    /invalid_report_type,invalid_report_status,invalid_report_scope/,
+  );
+  assert.match(
+    reportService.validateReportInput({ ...validInput, risks: ["x"] }).join(","),
+    /report_risk_required/,
+  );
+  assert.match(
+    reportService.validateReportInput({ ...validInput, recommendations: ["y"] }).join(","),
+    /report_recommendation_required/,
+  );
+});
+
+test("report service lists reports by project, type, status, and links", () => {
+  assert.deepEqual(
+    reportService.listReportsByProject("project_demo_landing").map((report) => report.id),
+    [
+      "report_demo_landing_qa_status",
+      "report_demo_landing_execution_summary",
+      "report_demo_landing_bug_summary",
+      "report_demo_landing_evidence_summary",
+    ],
+  );
+  assert.deepEqual(
+    reportService
+      .listReportsByType("project_demo_landing", "execution_summary")
+      .map((report) => report.id),
+    ["report_demo_landing_execution_summary"],
+  );
+  assert.deepEqual(
+    reportService.listReportsByStatus("project_demo_landing", "ready").map((report) => report.id),
+    ["report_demo_landing_qa_status", "report_demo_landing_evidence_summary"],
+  );
+  assert.deepEqual(
+    reportService
+      .listReportsByCycle("test_cycle_demo_landing_release_completed")
+      .map((report) => report.id),
+    [
+      "report_demo_landing_qa_status",
+      "report_demo_landing_execution_summary",
+      "report_demo_landing_bug_summary",
+      "report_demo_landing_evidence_summary",
+    ],
+  );
+  assert.deepEqual(
+    reportService
+      .listReportsByExecution("test_execution_demo_landing_release_valid_email_passed")
+      .map((report) => report.id),
+    [
+      "report_demo_landing_qa_status",
+      "report_demo_landing_execution_summary",
+      "report_demo_landing_evidence_summary",
+    ],
+  );
+  assert.deepEqual(
+    reportService
+      .listReportsByBugReport("bug_demo_landing_mobile_cta_draft")
+      .map((report) => report.id),
+    ["report_demo_landing_bug_summary"],
+  );
+  assert.deepEqual(
+    reportService
+      .listReportsByEvidence("evidence_demo_mobile_viewport_note")
+      .map((report) => report.id),
+    ["report_demo_landing_bug_summary"],
+  );
+});
+
+test("report create, update, and count helpers are deterministic with injected dates", () => {
+  const now = new Date("2026-05-13T14:00:00.000Z");
+  const input = {
+    projectId: "project_demo_landing",
+    title: "Relatório criado",
+    description: "Descrição criada",
+    reportType: "stakeholder_update",
+    status: "draft",
+    scope: "mixed",
+    linkedCycleIds: ["test_cycle_demo_landing_release_completed"],
+    linkedExecutionIds: ["test_execution_demo_landing_release_valid_email_passed"],
+    linkedBugReportIds: ["bug_demo_landing_invalid_email_open"],
+    linkedEvidenceIds: ["evidence_demo_invalid_email_screenshot"],
+    summary: "Sumário criado",
+    risks: ["Risco criado"],
+    recommendations: ["Recomendação criada"],
+    conclusion: "Conclusão criada",
+    createdBy: "QA",
+  };
+  const created = reportService.createReport(input, now);
+  const updated = reportService.updateReport(
+    created,
+    { status: "ready", title: "Relatório atualizado" },
+    new Date("2026-05-13T15:00:00.000Z"),
+  );
+
+  assert.equal(created.id, "report_1778680800000");
+  assert.equal(created.createdAt, "2026-05-13T14:00:00.000Z");
+  assert.equal(updated.status, "ready");
+  assert.equal(updated.title, "Relatório atualizado");
+  assert.equal(updated.updatedAt, "2026-05-13T15:00:00.000Z");
+  assert.equal(reportService.countReportsByProject("project_demo_landing"), 4);
+  assert.equal(reportService.countReportsByType("project_demo_landing", "qa_status"), 1);
+});
+
+test("report summary counts status, type, and linkage", () => {
+  assert.deepEqual(reportService.getReportSummary("project_demo_landing"), {
+    totalReports: 4,
+    draftReports: 1,
+    readyReports: 2,
+    reportsNeedingReview: 1,
+    archivedReports: 0,
+    qaStatusReports: 1,
+    executionSummaryReports: 1,
+    bugSummaryReports: 1,
+    evidenceSummaryReports: 1,
+    releaseReviewReports: 0,
+    stakeholderUpdateReports: 0,
+    linkedCycleReports: 4,
+    linkedExecutionReports: 4,
+    linkedBugReports: 4,
+    linkedEvidenceReports: 4,
+    reportsByType: {
+      qa_status: 1,
+      execution_summary: 1,
+      bug_summary: 1,
+      evidence_summary: 1,
+      release_review: 0,
+      stakeholder_update: 0,
+    },
+    reportsByStatus: {
+      draft: 1,
+      ready: 2,
+      needs_review: 1,
+      archived: 0,
+    },
+  });
+});
+
+test("buildReportSnapshot returns deterministic local project metrics", () => {
+  assert.deepEqual(reportService.buildReportSnapshot("project_demo_landing"), {
+    project: projectService.demoProjects.find((project) => project.id === "project_demo_landing"),
+    executionSummary: {
+      totalExecutions: 4,
+      passedExecutions: 1,
+      failedExecutions: 1,
+      blockedExecutions: 0,
+      skippedExecutions: 1,
+      notRunExecutions: 1,
+    },
+    bugSummary: {
+      totalBugs: 3,
+      openBugs: 1,
+      criticalBugs: 0,
+    },
+    evidenceSummary: {
+      totalEvidence: 3,
+      attachedEvidence: 1,
+      evidenceNeedingReview: 1,
+    },
+    totalCycles: 3,
+    totalExecutions: 4,
+    totalBugs: 3,
+    totalEvidence: 3,
+    openBugs: 1,
+    criticalBugs: 0,
+    attachedEvidence: 1,
+    reportsCount: 4,
+  });
+});
+
+test("report traceability connects project, cycles, executions, bugs, evidence, and report", () => {
+  const traceability = reportService.getReportTraceability("report_demo_landing_qa_status");
+
+  assert.equal(traceability.project.id, "project_demo_landing");
+  assert.equal(traceability.report.id, "report_demo_landing_qa_status");
+  assert.equal(traceability.testCycles.length, 2);
+  assert.equal(traceability.testExecutions.length, 3);
+  assert.equal(traceability.bugReports.length, 2);
+  assert.equal(traceability.evidence.length, 2);
+
+  const projectTraceability = reportService.getProjectReportTraceability("project_demo_landing");
+  assert.equal(projectTraceability.project.id, "project_demo_landing");
+  assert.equal(projectTraceability.reportCount, 4);
+
+  const bugTraceability = reportService.getBugReportReportTraceability(
+    "bug_demo_landing_invalid_email_open",
+  );
+  assert.equal(bugTraceability.bugReport.id, "bug_demo_landing_invalid_email_open");
+  assert.equal(bugTraceability.reportCount, 4);
+
+  const evidenceTraceability = reportService.getEvidenceReportTraceability(
+    "evidence_demo_invalid_email_screenshot",
+  );
+  assert.equal(evidenceTraceability.evidence.id, "evidence_demo_invalid_email_screenshot");
+  assert.equal(evidenceTraceability.reportCount, 3);
+});
+
+test("report UI source exists and exposes the pt-BR section", () => {
+  assert.match(pageSource, /ReportSection/);
+  assert.match(reportSectionSource, /Relatórios/);
+  assert.match(reportSectionSource, /Projeto em análise/);
+  assert.match(reportSectionSource, /Resumo de relatórios/);
+  assert.match(reportSectionSource, /Novo relatório/);
+  assert.match(reportSectionSource, /Editar relatório/);
+});
+
+test("report UI uses local persistence and report service helpers", () => {
+  assert.match(reportSectionSource, /frankintest\.block07\.reports/);
+  assert.match(reportSectionSource, /frankintest\.block05\.testCycles/);
+  assert.match(reportSectionSource, /frankintest\.block05\.testExecutions/);
+  assert.match(reportSectionSource, /frankintest\.block06\.bugReports/);
+  assert.match(reportSectionSource, /frankintest\.block06\.evidence/);
+  assert.match(reportSectionSource, /demoReports/);
+  assert.match(reportSectionSource, /validateReportInput/);
+  assert.match(reportSectionSource, /createReport/);
+  assert.match(reportSectionSource, /updateReport/);
+  assert.match(reportSectionSource, /getReportSummary/);
+  assert.match(reportSectionSource, /listReportsByProject/);
+  assert.match(reportSectionSource, /buildReportSnapshot/);
+});
+
+test("report UI preserves relationship labels and scope limitations", () => {
+  [
+    "Projeto -&gt; Execuções -&gt; Bugs -&gt; Evidências -&gt; Relatório",
+    "Projeto",
+    "Execuções",
+    "Bugs",
+    "Evidências",
+    "Relatório",
+    "Tipo de relatório",
+    "Escopo",
+    "Status",
+    "Ciclos vinculados",
+    "Execuções vinculadas",
+    "Bugs vinculados",
+    "Evidências vinculadas",
+    "Sumário",
+    "Riscos",
+    "Recomendações",
+    "Conclusão",
+    "Criado por",
+    "Preencher resumo com snapshot local",
+    "Relatório de status QA",
+    "Resumo de execução",
+    "Resumo de bugs",
+    "Resumo de evidências",
+    "Revisão de release",
+    "Atualização para stakeholders",
+    "Persistência local de demonstração via localStorage",
+    "Este bloco não",
+    "gera PDF, download ou exportação real",
+    "Este relatório é estruturado localmente; geração com IA será adicionada depois.",
+  ].forEach((copy) => {
+    assert.match(reportSectionSource, new RegExp(copy));
+  });
+});
+
+test("report UI keeps first render deterministic and loads localStorage after mount", () => {
+  assert.match(reportSectionSource, /useState<Report\[\]>\(demoReports\)/);
+  assert.match(reportSectionSource, /hasLoadedLocalReports/);
+  assert.match(reportSectionSource, /useEffect\(\(\) =>/);
+  assert.match(reportSectionSource, /window\.localStorage\.getItem\(reportStorageKey\)/);
+  assert.match(reportSectionSource, /if \(!hasLoadedLocalReports\)/);
+  assert.doesNotMatch(reportSectionSource, /Date\.now/);
+  assert.doesNotMatch(reportSectionSource, /Math\.random/);
+  assert.doesNotMatch(reportSectionSource, /suppressHydrationWarning/);
+});
+
+test("report navigation points to the local MVP section", () => {
+  assert.match(i18nSource, /label: "Relatórios", href: "#reports", status: "MVP local"/);
+  assert.match(reportSectionSource, /id="reports"/);
 });
 
 test("dashboard traceability, insights, and quick actions sections are present as UI-only cards", () => {

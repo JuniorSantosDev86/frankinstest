@@ -287,7 +287,7 @@ export const translations: Record<Locale, Translation> = {
       { label: "Execução de testes", href: "#test-executions", status: "MVP local" },
       { label: "Bugs e defeitos", href: "#bugs", status: "MVP local" },
       { label: "Evidências", href: "#evidence", status: "MVP local" },
-      { label: "Relatórios", href: "#reports", status: "UI demo" },
+      { label: "Relatórios", href: "#reports", status: "MVP local" },
       { label: "FrankInDrift", href: "#drift", status: "UI demo" },
       { label: "Configurações", href: "#settings", status: "Placeholder" },
     ],
@@ -568,7 +568,7 @@ export const translations: Record<Locale, Translation> = {
         status: "Sem chamadas reais de IA ou dedução de créditos",
       },
       {
-        id: "reports",
+        id: "reports-overview",
         name: "Relatórios",
         summary:
           "Prepare prontidão de release, resumos de bugs, resumos de evidências e relatórios de QA para stakeholders.",
@@ -651,7 +651,7 @@ export const translations: Record<Locale, Translation> = {
       { label: "Bugs e defeitos", href: "#bugs", status: "MVP local" },
       { label: "Evidências", href: "#evidence", status: "MVP local" },
       { label: "Check-up", href: "#checkup", status: "Credit-ready" },
-      { label: "Reports", href: "#reports", status: "Placeholder" },
+      { label: "Reports", href: "#reports", status: "MVP local" },
       { label: "FrankInDrift", href: "#drift", status: "Strategic" },
       { label: "Settings", href: "#settings", status: "Placeholder" },
     ],
@@ -932,7 +932,7 @@ export const translations: Record<Locale, Translation> = {
         status: "No real AI calls or credit deduction",
       },
       {
-        id: "reports",
+        id: "reports-overview",
         name: "Reports",
         summary:
           "Prepare release readiness, bug summaries, evidence summaries, and stakeholder-friendly QA reports.",
@@ -1015,7 +1015,7 @@ export const translations: Record<Locale, Translation> = {
       { label: "Bugs e defeitos", href: "#bugs", status: "MVP local" },
       { label: "Evidências", href: "#evidence", status: "MVP local" },
       { label: "Check-up", href: "#checkup", status: "Listo para créditos" },
-      { label: "Reportes", href: "#reports", status: "Placeholder" },
+      { label: "Reportes", href: "#reports", status: "MVP local" },
       { label: "FrankInDrift", href: "#drift", status: "Estratégico" },
       { label: "Configuración", href: "#settings", status: "Placeholder" },
     ],
@@ -1296,7 +1296,7 @@ export const translations: Record<Locale, Translation> = {
         status: "Sin llamadas reales de IA ni deducción de créditos",
       },
       {
-        id: "reports",
+        id: "reports-overview",
         name: "Reportes",
         summary:
           "Prepara readiness de release, resúmenes de bugs, resúmenes de evidencias y reportes de QA para stakeholders.",
