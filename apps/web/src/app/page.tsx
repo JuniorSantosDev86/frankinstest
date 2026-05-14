@@ -87,7 +87,7 @@ import {
   WorkspaceDetailArea,
   workspaceDetailTabs,
 } from "./components/WorkspaceDashboard";
-import { defaultLocale, isSupportedLocale, supportedLocales, translations, type Locale } from "./i18n";
+import { getTranslations } from "./i18n";
 
 const projectStorageKey = "frankintest.block02.projects";
 const moduleStorageKey = "frankintest.block03.modules";
@@ -169,7 +169,7 @@ const emptyBusinessRuleForm: BusinessRuleFormState = {
 };
 
 export default function Home() {
-  const [locale, setLocale] = useState<Locale>(defaultLocale);
+  const t = getTranslations();
   const [projects, setProjects] = useState<Project[]>(demoProjects);
   const [modules, setModules] = useState<ProductModule[]>(demoProductModules);
   const [requirements, setRequirements] = useState<Requirement[]>(demoRequirements);
@@ -191,7 +191,6 @@ export default function Home() {
   const [editingBusinessRuleId, setEditingBusinessRuleId] = useState<string | null>(null);
   const [businessRuleValidationError, setBusinessRuleValidationError] = useState(false);
   const [activeDetailTab, setActiveDetailTab] = useState("produto");
-  const t = translations[locale];
   const session = getMockSession();
 
   useEffect(() => {
@@ -592,21 +591,12 @@ export default function Home() {
           activeProjectName={selectedProject?.name ?? "Workspace padrão"}
           activeProjectId={activeProjectId}
           projects={visibleProjects}
-          locale={locale}
-          locales={supportedLocales}
-          localeLabel={t.languageSelector.label}
-          localeAriaLabel={t.languageSelector.ariaLabel}
           userName={session.user.name}
           onProjectChange={(projectId) => {
             setSelectedProjectId(projectId);
             resetModuleForm();
             setRequirementFormState(emptyRequirementForm);
             setBusinessRuleFormState(emptyBusinessRuleForm);
-          }}
-          onLocaleChange={(nextLocale) => {
-            if (isSupportedLocale(nextLocale)) {
-              setLocale(nextLocale);
-            }
           }}
         />
       }

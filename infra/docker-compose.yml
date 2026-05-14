@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: frankintest-postgres
+    environment:
+      POSTGRES_DB: frankintest_dev
+      POSTGRES_USER: frankintest
+      POSTGRES_PASSWORD: frankintest_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - frankintest_postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  frankintest_postgres_data:

@@ -1,0 +1,13 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: frankintest-api
+  web:
+    cors:
+      allowed-origins: "http://localhost:3000"
+
+app:
+  name: FrankInTest API
+  version: 0.1.0

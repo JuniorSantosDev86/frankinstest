@@ -107,7 +107,7 @@ const aiUsageService = loadTsModule("src/lib/ai-usage/aiUsageService");
 test("FrankInTest shell exposes the required navigation sections", () => {
   [
     "Control Tower",
-    "Projects",
+    "Projetos",
     "QA Workspace",
     "Cenários de teste",
     "Casos de teste",
@@ -117,9 +117,9 @@ test("FrankInTest shell exposes the required navigation sections", () => {
     "Bugs e defeitos",
     "Evidências",
     "Check-up",
-    "Reports",
+    "Relatórios",
     "FrankInDrift",
-    "Settings",
+    "Configurações",
   ].forEach((section) => {
     assert.match(productSource, new RegExp(section));
   });
@@ -187,29 +187,29 @@ test("sidebar navigation includes expected QA workspace items", () => {
   });
 });
 
-test("AI-assisted output is framed as structured QA artifacts", () => {
+test("IA produz artefatos estruturados de QA", () => {
   [
-    "Requirement",
-    "Business rule",
-    "Test scenario",
-    "Test case",
-    "Bug report",
-    "Evidence summary",
-    "Risk item",
-    "Release readiness report",
-    "Drift finding",
-    "Automation recommendation",
-    "Integration recommendation",
+    "Requisito",
+    "Regra de negócio",
+    "Cenário de teste",
+    "Caso de teste",
+    "Relatório de bug",
+    "Resumo de evidência",
+    "Item de risco",
+    "Relatório de prontidão de release",
+    "Achado de drift",
+    "Recomendação de automação",
+    "Recomendação de integração",
   ].forEach((artifact) => {
     assert.match(productSource, new RegExp(artifact));
   });
 });
 
 test("product copy keeps safe analysis boundaries", () => {
-  assert.match(productSource, /AI-assisted/);
-  assert.match(productSource, /Potential risks/);
-  assert.match(productSource, /Recommended validation/);
-  assert.match(productSource, /require confirmation/i);
+  assert.match(productSource, /[Aa]ssistido por IA/);
+  assert.match(productSource, /riscos potenciais/i);
+  assert.match(productSource, /[Vv]alidação recomendada/);
+  assert.match(productSource, /exigem confirmação/i);
 
   [
     "Fully tested",
@@ -253,14 +253,11 @@ test("dashboard metrics use deterministic first-render workspace state", () => {
   assert.doesNotMatch(pageSource, /Math\.random\(\)/);
 });
 
-test("i18n foundation exposes the three supported locales", () => {
-  ['key: "pt-BR"', 'key: "en"', 'key: "es"'].forEach((localeKey) => {
-    assert.match(i18nSource, new RegExp(localeKey));
-  });
-
-  ["Português (BR)", "English", "Español"].forEach((localeLabel) => {
-    assert.ok(i18nSource.includes(localeLabel));
-  });
+test("i18n usa somente pt-BR durante o MVP", () => {
+  assert.match(i18nSource, /defaultLocale = "pt-BR"/);
+  assert.match(i18nSource, /"pt-BR"/);
+  assert.doesNotMatch(i18nSource, /key: "en"/);
+  assert.doesNotMatch(i18nSource, /key: "es"/);
 });
 
 test("pt-BR remains the default locale", () => {
@@ -3382,13 +3379,14 @@ test("test execution navigation points to the local MVP section", () => {
   assert.match(testExecutionSectionSource, /id="test-executions"/);
 });
 
-test("language selector is visible in the application shell", () => {
-  assert.match(workspaceDashboardSource, /<select/);
-  assert.match(workspaceDashboardSource, /locales\.map/);
-  assert.match(pageSource, /localeAriaLabel=\{t\.languageSelector\.ariaLabel\}/);
+test("interface usa somente pt-BR sem seletor de idioma", () => {
+  assert.doesNotMatch(workspaceDashboardSource, /locales\.map/);
+  assert.doesNotMatch(pageSource, /localeAriaLabel/);
+  assert.doesNotMatch(pageSource, /supportedLocales/);
 });
 
-test("default locale is pt-BR", () => {
+test("default locale é pt-BR e getTranslations retorna pt-BR", () => {
   assert.match(i18nSource, /defaultLocale = "pt-BR"/);
-  assert.match(pageSource, /useState<Locale>\(defaultLocale\)/);
+  assert.match(i18nSource, /getTranslations/);
+  assert.match(pageSource, /getTranslations\(\)/);
 });

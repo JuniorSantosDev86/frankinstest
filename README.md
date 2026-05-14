@@ -1,38 +1,44 @@
 # FrankInTest
 
-FrankInTest is an AI-assisted QA Lead SaaS for software quality.
+FrankInTest é uma plataforma SaaS de QA assistida por IA para qualidade de software.
 
-It is designed to help teams and builders organize QA check-ups, projects, test cases, bugs, evidence, reports, automation strategy, and documentation drift.
+## Pilares do produto
 
-## Product pillars
+- Check-up assistido por IA para landing pages, MVPs, fluxos SaaS, APIs e análise de risco de produto.
+- Workspace de QA Lead para workflows profissionais de QA.
+- FrankInDrift para detectar desalinhamento entre documentação, requisitos, testes e comportamento real do produto.
 
-- AI-assisted QA Check-up for landing pages, MVPs, SaaS flows, APIs, and product risk reviews.
-- QA Lead Workspace for professional QA workflows.
-- FrankInDrift for detecting misalignment between documentation, requirements, tests, and product behavior.
+## Arquitetura
 
-## Current stage
+- Frontend: Next.js + TypeScript em `apps/web`.
+- Backend core: Java 21+ com Spring Boot em `services/api`.
+- Banco de dados: PostgreSQL (via Docker Compose em `infra/`).
 
-Early MVP foundation.
+## Como rodar localmente
 
-Implemented so far:
+### Backend
 
-- Next.js + TypeScript foundation.
-- Responsive SaaS shell.
-- Local i18n foundation with pt-BR, en, and es.
-- Mock/local auth foundation.
-- Personal workspace foundation.
-- Local project CRUD foundation.
-- Project types and access-check helpers.
-- Basic test suite using Node test runner.
+```bash
+cd services/api
+./mvnw spring-boot:run
+```
 
-## Tech stack
+### Frontend
 
-- Next.js
-- TypeScript
-- Tailwind CSS
-- Node test runner
+```bash
+cd apps/web
+npm install
+npm run dev
+```
 
-## Scripts
+### Infraestrutura (banco de dados)
+
+```bash
+cd infra
+docker-compose up -d
+```
+
+## Scripts do frontend
 
 ```bash
 npm run dev
@@ -41,6 +47,14 @@ npm test
 npm run build
 ```
 
+## Scripts do backend
+
+```bash
+./mvnw test
+./mvnw spring-boot:run
+./mvnw package
+```
+
 ## Status
 
-FrankInTest is under active development.
+FrankInTest está em desenvolvimento ativo. Interface em português brasileiro.

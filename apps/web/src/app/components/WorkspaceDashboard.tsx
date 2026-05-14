@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { MetricCard } from "./MetricCard";
 import { TraceabilityFlow, type TraceabilityNode } from "./TraceabilityFlow";
+import { ApiStatusBadge } from "./ApiStatusBadge";
 
 type SidebarGroup = {
   title: string;
@@ -13,11 +14,6 @@ type SidebarGroup = {
     status?: string;
     disabled?: boolean;
   }[];
-};
-
-type TopBarLocale = {
-  key: string;
-  label: string;
 };
 
 type TopBarProject = {
@@ -238,24 +234,14 @@ export function TopBar({
   activeProjectName,
   activeProjectId,
   projects,
-  locale,
-  locales,
-  localeLabel,
-  localeAriaLabel,
   userName,
   onProjectChange,
-  onLocaleChange,
 }: {
   activeProjectName: string;
   activeProjectId: string;
   projects: readonly TopBarProject[];
-  locale: string;
-  locales: readonly TopBarLocale[];
-  localeLabel: string;
-  localeAriaLabel: string;
   userName: string;
   onProjectChange: (projectId: string) => void;
-  onLocaleChange: (locale: string) => void;
 }) {
   return (
     <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
@@ -289,22 +275,7 @@ export function TopBar({
         </label>
 
         <div className="flex flex-wrap items-center gap-2">
-          <label className="sr-only" htmlFor="topbar-locale-selector">
-            {localeLabel}
-          </label>
-          <select
-            id="topbar-locale-selector"
-            aria-label={localeAriaLabel}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:border-cyan-500"
-            value={locale}
-            onChange={(event) => onLocaleChange(event.target.value)}
-          >
-            {locales.map((supportedLocale) => (
-              <option key={supportedLocale.key} value={supportedLocale.key}>
-                {supportedLocale.label}
-              </option>
-            ))}
-          </select>
+          <ApiStatusBadge />
           <div className="rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-black text-slate-800">
             {userName}
           </div>
