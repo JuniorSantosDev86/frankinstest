@@ -1,8 +1,6 @@
 # Local strategic/product documentation (never commit)
 /docs/
 /prompts/
-/AGENTS.md
-/CLAUDE.md
 /manifest.json
 
 # --- Frontend (apps/web) ---
