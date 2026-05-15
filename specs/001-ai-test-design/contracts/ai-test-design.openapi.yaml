@@ -1,0 +1,280 @@
+openapi: 3.0.3
+info:
+  title: FrankInTest AI Test Design Assistance API
+  version: 0.1.0
+  description: Product API contract for AI-assisted test scenario and test case generation.
+servers:
+  - url: http://localhost:8080
+paths:
+  /api/ai/test-design/estimate:
+    post:
+      summary: Estimate credits for AI test design generation
+      operationId: estimateAiTestDesign
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiTestDesignEstimateRequest"
+      responses:
+        "200":
+          description: Credit estimate ready for confirmation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiTestDesignEstimateResponse"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: User cannot access organization/project or feature
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /api/ai/test-design/scenarios:
+    post:
+      summary: Generate draft AI-assisted test scenarios from a business rule
+      operationId: generateTestScenarios
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateScenariosRequest"
+      responses:
+        "201":
+          description: Draft scenarios generated and persisted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiGenerationResult"
+        "400":
+          description: Invalid input or malformed provider output
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "402":
+          description: Insufficient AI credits
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: User cannot access organization/project or feature
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "502":
+          description: Provider or platform failure; final credits are not consumed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /api/ai/test-design/test-cases:
+    post:
+      summary: Generate draft AI-assisted test cases from a test scenario
+      operationId: generateTestCases
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateTestCasesRequest"
+      responses:
+        "201":
+          description: Draft test cases generated and persisted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiGenerationResult"
+        "400":
+          description: Invalid input or malformed provider output
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "402":
+          description: Insufficient AI credits
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: User cannot access organization/project or feature
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "502":
+          description: Provider or platform failure; final credits are not consumed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /api/ai/runs/{aiRunId}:
+    get:
+      summary: Fetch AI run status and safe result metadata
+      operationId: getAiRun
+      parameters:
+        - name: aiRunId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: AI run status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiRunStatus"
+        "404":
+          description: AI run not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+components:
+  schemas:
+    AiTestDesignEstimateRequest:
+      type: object
+      required: [organizationId, projectId, generationType, sourceArtifactId]
+      properties:
+        organizationId:
+          type: string
+        projectId:
+          type: string
+        generationType:
+          type: string
+          enum: [scenarios_from_business_rule, test_cases_from_scenario]
+        sourceArtifactId:
+          type: string
+        context:
+          type: string
+          maxLength: 4000
+    AiTestDesignEstimateResponse:
+      type: object
+      required: [estimatedCredits, pricingNote, expiresAt]
+      properties:
+        estimatedCredits:
+          type: integer
+          minimum: 1
+        pricingNote:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+    GenerateScenariosRequest:
+      type: object
+      required: [organizationId, projectId, businessRuleId, confirmedEstimatedCredits]
+      properties:
+        organizationId:
+          type: string
+        projectId:
+          type: string
+        businessRuleId:
+          type: string
+        confirmedEstimatedCredits:
+          type: integer
+          minimum: 1
+        context:
+          type: string
+          maxLength: 4000
+    GenerateTestCasesRequest:
+      type: object
+      required: [organizationId, projectId, scenarioId, confirmedEstimatedCredits]
+      properties:
+        organizationId:
+          type: string
+        projectId:
+          type: string
+        scenarioId:
+          type: string
+        confirmedEstimatedCredits:
+          type: integer
+          minimum: 1
+        context:
+          type: string
+          maxLength: 4000
+    AiGenerationResult:
+      type: object
+      required: [aiRunId, status, outputArtifactType, artifacts, consumedCredits]
+      properties:
+        aiRunId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [completed]
+        outputArtifactType:
+          type: string
+          enum: [test_scenario, test_case]
+        artifacts:
+          type: array
+          items:
+            $ref: "#/components/schemas/GeneratedQaArtifact"
+        consumedCredits:
+          type: integer
+          minimum: 0
+        creditNote:
+          type: string
+    GeneratedQaArtifact:
+      type: object
+      required: [id, title, status, aiAssisted]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [draft]
+        aiAssisted:
+          type: boolean
+          enum: [true]
+    AiRunStatus:
+      type: object
+      required: [aiRunId, status, estimatedCredits, consumedCredits]
+      properties:
+        aiRunId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [estimated, reserved, running, completed, failed, cancelled]
+        estimatedCredits:
+          type: integer
+          minimum: 0
+        consumedCredits:
+          type: integer
+          minimum: 0
+        failureCategory:
+          type: string
+          nullable: true
+        outputArtifactType:
+          type: string
+          nullable: true
+        outputArtifactIds:
+          type: array
+          items:
+            type: string
+    ApiError:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        aiRunId:
+          type: string
+          nullable: true

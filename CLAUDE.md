@@ -55,15 +55,13 @@ frankintest/
 
 ## Idioma da Interface
 
-A interface do FrankInTest é implementada **somente em português brasileiro (PT-BR)** durante o MVP.
-
-O i18n foi simplificado para somente `pt-BR`. O seletor de idioma foi removido da UI.
+A interface do FrankInTest deve ser implementada **somente em português brasileiro (PT-BR)** durante o MVP.
 
 Não adicionar novos textos, telas, labels ou dicionários de tradução para en ou es durante o MVP.
 
-A estrutura do arquivo `i18n.ts` está preservada — as traduções en e es poderão ser reintroduzidas em um bloco dedicado de hardening pós-MVP.
+A arquitetura i18n existente deve ser preservada (não remover, não quebrar o seletor de idioma).
 
-A internacionalização completa (en e es) será executada após o MVP estar estável e funcional.
+A internacionalização completa (en e es) será executada após o MVP estar estável, em um bloco dedicado de hardening de tradução.
 
 ## Regra do Produto Não-Negociável
 
@@ -181,11 +179,3 @@ Ao final de cada bloco, reportar:
 6. Limitações conhecidas.
 7. Atualizações de roadmap/status atual.
 8. Mensagem de commit sugerida.
-
-<!-- SPECKIT START -->
-Current Spec Kit plan:
-- `specs/001-ai-test-design/plan.md`
-
-For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan above.
-<!-- SPECKIT END -->

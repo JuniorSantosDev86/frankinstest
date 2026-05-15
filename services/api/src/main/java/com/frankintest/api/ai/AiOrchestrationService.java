@@ -145,7 +145,7 @@ public class AiOrchestrationService {
     private void insertAiRun(String id, String orgId, String projectId, String userId,
                              String feature, String inputContext, long estimatedCredits, String status) {
         jdbc.update("""
-                INSERT INTO ai_runs (id, organization_id, project_id, user_id, feature, input_context,
+                INSERT INTO ai_runs (id, organization_id, project_id, user_id, feature, input_summary,
                     estimated_credits, consumed_credits, status, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
                 """,
@@ -156,11 +156,11 @@ public class AiOrchestrationService {
     private void updateAiRun(String id, String status, String artifactType, String artifactId,
                              long consumed, String errorMessage) {
         jdbc.update("""
-                UPDATE ai_runs SET status = ?, output_artifact_type = ?, output_artifact_id = ?,
-                    consumed_credits = ?, error_message = ?
+                UPDATE ai_runs SET status = ?, output_artifact_type = ?, output_artifact_ids = ?,
+                    consumed_credits = ?
                 WHERE id = ?
                 """,
-                status, artifactType, artifactId, consumed, errorMessage, id);
+                status, artifactType, artifactId, consumed, id);
     }
 
     private void insertCreditTransaction(String id, String orgId, String type, long amount,

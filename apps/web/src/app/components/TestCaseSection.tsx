@@ -4,6 +4,8 @@ import { FormEvent, useMemo, useState } from "react";
 
 import type { BusinessRule, ProductModule, Requirement } from "@/lib/business-understanding/types";
 import type { Project } from "@/lib/projects/types";
+import { AiGenerationModal } from "./AiGenerationModal";
+import type { GeneratedQaArtifact } from "@/lib/ai-assistance/types";
 import {
   createTestCase,
   demoTestCases,
@@ -138,6 +140,7 @@ export function TestCaseSection({
   });
   const [editingTestCaseId, setEditingTestCaseId] = useState<string | null>(null);
   const [validationError, setValidationError] = useState(false);
+  const [aiModalOpen, setAiModalOpen] = useState(false);
 
   const projectModules = useMemo(
     () => modules.filter((module) => module.projectId === activeProjectId),
@@ -261,6 +264,37 @@ export function TestCaseSection({
     }));
   }
 
+  function handleAiOutputAccepted(artifacts: GeneratedQaArtifact[], aiRunId: string) {
+    const linkedScenario = scenarios.find((s) => s.id === activeScenarioId);
+
+    const newCases = artifacts.map((artifact) => {
+      const input: TestCaseInput = {
+        projectId: activeProjectId,
+        moduleId: linkedScenario?.moduleId ?? activeModuleId,
+        requirementId: linkedScenario?.requirementId ?? activeRequirementId,
+        businessRuleId: linkedScenario?.businessRuleId ?? activeBusinessRuleId,
+        scenarioId: activeScenarioId,
+        title: artifact.title,
+        objective: artifact.description ?? "",
+        precondition: "",
+        steps: [],
+        expectedResult: "",
+        priority: "medium",
+        status: "draft",
+        testLevel: "acceptance",
+        automationStatus: "not_automated",
+        aiGenerated: true,
+        reviewedBy: "",
+      };
+      return createTestCase(input);
+    });
+
+    if (newCases.length > 0) {
+      persistTestCases([...newCases, ...testCases]);
+    }
+    void aiRunId;
+  }
+
   function toTestCaseInput(): TestCaseInput {
     const linkedScenario = scenarios.find((scenario) => scenario.id === activeScenarioId);
     const steps = formState.stepsText
@@ -341,6 +375,15 @@ export function TestCaseSection({
           <p className="mt-3 text-sm leading-7 text-slate-600">
             Visualize, crie e edite casos determinísticos ligados a cenários de teste.
           </p>
+          {activeScenarioId && (
+            <button
+              type="button"
+              onClick={() => setAiModalOpen(true)}
+              className="mt-4 rounded-xl border border-teal-700/30 bg-teal-50 px-4 py-2 text-sm font-black text-teal-800 transition hover:bg-teal-100"
+            >
+              Gerar casos com IA
+            </button>
+          )}
         </div>
 
         <label className="grid min-w-72 gap-2 text-sm font-bold text-slate-700">
@@ -622,7 +665,15 @@ export function TestCaseSection({
                             <Badge label={priorityLabels[testCase.priority]} />
                           </td>
                           <td className="px-4 py-4">
-                            <Badge label={statusLabels[testCase.status]} />
+                            <div className="flex flex-wrap gap-1">
+                              <Badge label={statusLabels[testCase.status]} />
+                              {testCase.aiGenerated && (
+                                <>
+                                  <Badge label="rascunho" variant="draft" />
+                                  <Badge label="assistido por IA" variant="ai" />
+                                </>
+                              )}
+                            </div>
                           </td>
                           <td className="px-4 py-4">
                             <Badge label={testLevelLabels[testCase.testLevel]} />
@@ -655,6 +706,20 @@ export function TestCaseSection({
           )}
         </section>
       </div>
+
+      {aiModalOpen && activeScenarioId ? (
+        <AiGenerationModal
+          isOpen={aiModalOpen}
+          mode="test-cases"
+          projectId={activeProjectId}
+          scenarioId={activeScenarioId}
+          scenarioTitle={
+            scenarios.find((s) => s.id === activeScenarioId)?.title ?? activeScenarioId
+          }
+          onClose={() => setAiModalOpen(false)}
+          onAccept={handleAiOutputAccepted}
+        />
+      ) : null}
     </section>
   );
 }
@@ -700,11 +765,13 @@ function SummaryMetric({ label, value }: { label: string; value: number }) {
   );
 }
 
-function Badge({ label }: { label: string }) {
-  return (
-    <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-700 ring-1 ring-slate-900/10">
-      {label}
-    </span>
-  );
+function Badge({ label, variant }: { label: string; variant?: "default" | "draft" | "ai" }) {
+  const cls =
+    variant === "draft"
+      ? "rounded-full bg-amber-100 px-2 py-0.5 text-xs font-black text-amber-700 ring-1 ring-amber-300/40"
+      : variant === "ai"
+        ? "rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-700 ring-1 ring-teal-300/40"
+        : "rounded-full bg-white px-3 py-1 text-xs font-black text-slate-700 ring-1 ring-slate-900/10";
+  return <span className={cls}>{label}</span>;
 }
 

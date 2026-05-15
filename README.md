@@ -55,6 +55,31 @@ npm run build
 ./mvnw package
 ```
 
+## Variáveis de ambiente — Backend (AI Test Design)
+
+O backend usa provedor simulado por padrão. Nenhuma chave de provedor real é necessária para desenvolvimento local ou testes automatizados.
+
+```bash
+# Provedor de IA (padrão: mock — sem chamadas externas)
+AI_MOCK_ENABLED=true
+ANTHROPIC_API_KEY=         # Deixar vazio em dev/test. Preencher apenas para uso com provedor real.
+ANTHROPIC_MODEL=claude-sonnet-4-6
+ANTHROPIC_MAX_TOKENS=1024
+
+# Banco de dados
+POSTGRES_URL=jdbc:postgresql://localhost:5432/frankintest_dev
+POSTGRES_USER=frankintest
+POSTGRES_PASSWORD=frankintest_dev
+```
+
+Nunca adicione `ANTHROPIC_API_KEY` ou qualquer chave de provedor a variáveis `NEXT_PUBLIC_*` ou ao frontend.
+
+## Variáveis de ambiente — Frontend
+
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:8080
+```
+
 ## Status
 
 FrankInTest está em desenvolvimento ativo. Interface em português brasileiro.

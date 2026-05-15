@@ -1,18 +1,23 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 import {
-  estimateGeneration,
+  estimateTestDesign,
   generateScenarios,
   generateTestCases,
+  mockEstimateResponse,
+  mockGenerateScenariosResponse,
+  mockGenerateTestCasesResponse,
 } from "@/lib/ai-assistance/aiAssistanceClient";
 import type {
-  AiGenerateScenariosRequest,
-  AiGenerateTestCasesRequest,
+  AiGenerationResult,
   AiGenerationState,
-  AiRunResult,
+  GeneratedQaArtifact,
 } from "@/lib/ai-assistance/types";
+
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_AI === "true";
+const DEFAULT_ORG = process.env.NEXT_PUBLIC_DEFAULT_ORG_ID ?? "org_default";
 
 type GenerateScenariosProps = {
   mode: "scenarios";
@@ -31,17 +36,18 @@ type GenerateTestCasesProps = {
 type AiGenerationModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onAccept: (output: string, aiRunId: string) => void;
+  onAccept: (artifacts: GeneratedQaArtifact[], aiRunId: string) => void;
 } & (GenerateScenariosProps | GenerateTestCasesProps);
 
 export function AiGenerationModal(props: AiGenerationModalProps) {
   const { isOpen, onClose, onAccept } = props;
   const [extraContext, setExtraContext] = useState("");
   const [state, setState] = useState<AiGenerationState>({ phase: "idle" });
-  const dialogRef = useRef<HTMLDivElement>(null);
 
-  const contextLabel = props.mode === "scenarios" ? props.businessRuleTitle : props.scenarioTitle;
-  const artifactLabel = props.mode === "scenarios" ? "cenários de teste" : "casos de teste";
+  const contextLabel =
+    props.mode === "scenarios" ? props.businessRuleTitle : props.scenarioTitle;
+  const artifactLabel =
+    props.mode === "scenarios" ? "cenários de teste" : "casos de teste";
 
   function handleClose() {
     setState({ phase: "idle" });
@@ -52,55 +58,86 @@ export function AiGenerationModal(props: AiGenerationModalProps) {
   async function handleEstimate() {
     setState({ phase: "estimating" });
     try {
-      const result = await estimateGeneration({
-        feature: props.mode === "scenarios" ? "generate_scenarios" : "generate_test_cases",
-        context: contextLabel + " " + extraContext,
+      if (USE_MOCK) {
+        const result = mockEstimateResponse(contextLabel + " " + extraContext);
+        setState({
+          phase: "estimated",
+          estimatedCredits: result.estimatedCredits,
+          pricingNote: result.pricingNote,
+          expiresAt: result.expiresAt,
+        });
+        return;
+      }
+
+      const result = await estimateTestDesign({
+        organizationId: DEFAULT_ORG,
+        projectId: props.projectId,
+        generationType:
+          props.mode === "scenarios"
+            ? "scenarios_from_business_rule"
+            : "test_cases_from_scenario",
+        sourceArtifactId:
+          props.mode === "scenarios" ? props.businessRuleId : props.scenarioId,
+        context: extraContext || undefined,
       });
       setState({
         phase: "estimated",
         estimatedCredits: result.estimatedCredits,
         pricingNote: result.pricingNote,
+        expiresAt: result.expiresAt,
       });
     } catch {
-      setState({ phase: "error", message: "Não foi possível estimar créditos. Tente novamente." });
+      setState({
+        phase: "error",
+        message: "Não foi possível estimar créditos. Tente novamente.",
+      });
     }
   }
 
   async function handleGenerate() {
+    if (state.phase !== "estimated") return;
+    const credits = state.estimatedCredits;
+
     setState({ phase: "generating" });
     try {
-      let result: AiRunResult;
-      if (props.mode === "scenarios") {
-        const req: AiGenerateScenariosRequest = {
+      let result: AiGenerationResult;
+
+      if (USE_MOCK) {
+        result =
+          props.mode === "scenarios"
+            ? mockGenerateScenariosResponse(props.businessRuleTitle)
+            : mockGenerateTestCasesResponse(props.scenarioTitle);
+      } else if (props.mode === "scenarios") {
+        result = await generateScenarios({
+          organizationId: DEFAULT_ORG,
           projectId: props.projectId,
           businessRuleId: props.businessRuleId,
-          businessRuleTitle: props.businessRuleTitle,
+          confirmedEstimatedCredits: credits,
           context: extraContext || undefined,
-        };
-        result = await generateScenarios(req);
+        });
       } else {
-        const req: AiGenerateTestCasesRequest = {
+        result = await generateTestCases({
+          organizationId: DEFAULT_ORG,
           projectId: props.projectId,
           scenarioId: props.scenarioId,
-          scenarioTitle: props.scenarioTitle,
+          confirmedEstimatedCredits: credits,
           context: extraContext || undefined,
-        };
-        result = await generateTestCases(req);
+        });
       }
 
-      if (result.status === "failed") {
-        setState({ phase: "error", message: result.errorMessage ?? "Erro desconhecido na geração." });
-      } else {
-        setState({ phase: "completed", result });
-      }
-    } catch {
-      setState({ phase: "error", message: "Erro de comunicação com o backend. Verifique se o servidor está rodando." });
+      setState({ phase: "completed", result });
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Erro de comunicação com o backend. Verifique se o servidor está rodando.";
+      setState({ phase: "error", message });
     }
   }
 
   function handleAccept() {
-    if (state.phase === "completed" && state.result.output) {
-      onAccept(state.result.output, state.result.aiRunId);
+    if (state.phase === "completed") {
+      onAccept(state.result.artifacts, state.result.aiRunId);
       handleClose();
     }
   }
@@ -114,10 +151,7 @@ export function AiGenerationModal(props: AiGenerationModalProps) {
       aria-modal="true"
       aria-label={`Gerar ${artifactLabel} com IA`}
     >
-      <div
-        ref={dialogRef}
-        className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-2xl"
-      >
+      <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-2xl">
         <div className="flex items-start justify-between border-b border-slate-100 p-6">
           <div>
             <p className="text-xs font-black uppercase tracking-widest text-teal-700">
@@ -146,8 +180,9 @@ export function AiGenerationModal(props: AiGenerationModalProps) {
           </div>
 
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-800">
-            Os {artifactLabel} gerados são <strong>sugestões que requerem validação humana</strong>.
-            Serão salvos como rascunho (IA assistida) e devem ser revisados por um QA antes de uso.
+            Os {artifactLabel} gerados são{" "}
+            <strong>rascunhos assistidos por IA que requerem validação humana</strong>. Serão salvos
+            como <strong>rascunho</strong> e devem ser revisados por um QA antes de uso.
           </div>
 
           <label className="grid gap-2 text-sm font-bold text-slate-700">
@@ -172,13 +207,17 @@ export function AiGenerationModal(props: AiGenerationModalProps) {
           )}
 
           {state.phase === "estimating" && (
-            <p className="text-center text-sm font-semibold text-slate-500">Calculando estimativa...</p>
+            <p className="text-center text-sm font-semibold text-slate-500">
+              Calculando estimativa...
+            </p>
           )}
 
           {state.phase === "estimated" && (
             <div className="space-y-3">
               <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <span className="text-2xl font-black text-slate-950">{state.estimatedCredits}</span>
+                <span className="text-2xl font-black text-slate-950">
+                  {state.estimatedCredits}
+                </span>
                 <div>
                   <p className="text-sm font-black text-slate-700">créditos estimados</p>
                   <p className="text-xs text-slate-500">{state.pricingNote}</p>
@@ -190,7 +229,7 @@ export function AiGenerationModal(props: AiGenerationModalProps) {
                   onClick={handleGenerate}
                   className="flex-1 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-black text-white transition hover:bg-teal-800"
                 >
-                  Gerar {artifactLabel}
+                  Confirmar e gerar {artifactLabel}
                 </button>
                 <button
                   type="button"
@@ -207,23 +246,51 @@ export function AiGenerationModal(props: AiGenerationModalProps) {
             <div className="space-y-2 text-center">
               <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-teal-200 border-t-teal-700" />
               <p className="text-sm font-semibold text-slate-500">
-                Gerando {artifactLabel}... Aguarde.
+                Gerando {artifactLabel}… Aguarde.
               </p>
             </div>
           )}
 
           {state.phase === "completed" && (
             <div className="space-y-4">
-              <div className="rounded-xl border border-teal-200 bg-teal-50 p-4">
-                <p className="mb-2 text-xs font-black uppercase tracking-wide text-teal-700">
-                  {artifactLabel} sugeridos — requerem validação
+              <div className="space-y-2">
+                <p className="text-xs font-black uppercase tracking-wide text-teal-700">
+                  {artifactLabel} sugeridos — rascunho assistido por IA
                 </p>
-                <pre className="max-h-64 overflow-y-auto whitespace-pre-wrap text-xs leading-6 text-slate-700">
-                  {state.result.output}
-                </pre>
+                {state.result.artifacts.map((artifact) => (
+                  <div
+                    key={artifact.id}
+                    className="rounded-xl border border-teal-200 bg-teal-50 p-3"
+                    data-testid="ai-artifact-card"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="rounded-full bg-teal-100 px-2 py-0.5 text-xs font-black text-teal-700"
+                        data-testid="ai-draft-label"
+                      >
+                        rascunho
+                      </span>
+                      <span
+                        className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600"
+                        data-testid="ai-assisted-label"
+                      >
+                        assistido por IA
+                      </span>
+                    </div>
+                    <p className="mt-2 text-sm font-bold text-teal-900">{artifact.title}</p>
+                    {artifact.description && (
+                      <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                        {artifact.description}
+                      </p>
+                    )}
+                  </div>
+                ))}
               </div>
               <p className="text-xs text-slate-500">
                 Créditos consumidos: <strong>{state.result.consumedCredits}</strong>
+              </p>
+              <p className="text-xs font-semibold text-amber-700">
+                Todos os artefatos requerem revisão humana antes de serem promovidos a ativos.
               </p>
               <div className="flex gap-3">
                 <button
@@ -249,6 +316,10 @@ export function AiGenerationModal(props: AiGenerationModalProps) {
               <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">
                 {state.message}
               </div>
+              <p className="text-xs text-slate-500">
+                Caso a geração tenha falhado por problema do serviço, os créditos estimados não
+                foram consumidos.
+              </p>
               <div className="flex gap-3">
                 <button
                   type="button"

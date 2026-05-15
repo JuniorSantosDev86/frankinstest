@@ -5,6 +5,7 @@ import { FormEvent, useMemo, useState } from "react";
 import type { BusinessRule, ProductModule, Requirement } from "@/lib/business-understanding/types";
 import type { Project } from "@/lib/projects/types";
 import { AiGenerationModal } from "./AiGenerationModal";
+import type { GeneratedQaArtifact } from "@/lib/ai-assistance/types";
 import {
   createTestScenario,
   demoTestCases,
@@ -268,7 +269,7 @@ export function TestScenarioSection({
     resetForm(activeProjectId);
   }
 
-  function handleAiOutputAccepted(output: string, aiRunId: string) {
+  function handleAiOutputAccepted(artifacts: GeneratedQaArtifact[], aiRunId: string) {
     const linkedRule = requirementBusinessRules.find((rule) => rule.id === activeBusinessRuleId);
     const linkedRequirement = moduleRequirements.find(
       (req) => req.id === (linkedRule?.requirementId ?? activeRequirementId),
@@ -277,23 +278,26 @@ export function TestScenarioSection({
       (mod) => mod.id === (linkedRule?.moduleId ?? linkedRequirement?.moduleId ?? activeModuleId),
     );
 
-    const input: TestScenarioInput = {
-      projectId: activeProjectId,
-      moduleId: linkedModule?.id ?? activeModuleId,
-      requirementId: linkedRequirement?.id ?? activeRequirementId,
-      businessRuleId: linkedRule?.id ?? activeBusinessRuleId,
-      title: `[IA] Cenários para: ${linkedRule?.title ?? activeBusinessRuleId}`,
-      description: output,
-      scenarioType: "positive",
-      priority: "medium",
-      status: "draft",
-      testLevel: "acceptance",
-      aiGenerated: true,
-      reviewedBy: "",
-    };
+    const newScenarios = artifacts.map((artifact) => {
+      const input: TestScenarioInput = {
+        projectId: activeProjectId,
+        moduleId: linkedModule?.id ?? activeModuleId,
+        requirementId: linkedRequirement?.id ?? activeRequirementId,
+        businessRuleId: linkedRule?.id ?? activeBusinessRuleId,
+        title: artifact.title,
+        description: artifact.description ?? "",
+        scenarioType: "positive",
+        priority: "medium",
+        status: "draft",
+        testLevel: "acceptance",
+        aiGenerated: true,
+        reviewedBy: "",
+      };
+      return createTestScenario(input);
+    });
 
-    if (validateTestScenarioInput(input).length === 0) {
-      persistScenarios([createTestScenario(input), ...scenarios]);
+    if (newScenarios.length > 0) {
+      persistScenarios([...newScenarios, ...scenarios]);
     }
 
     void aiRunId;
@@ -599,7 +603,15 @@ export function TestScenarioSection({
                             <Badge label={priorityLabels[scenario.priority]} />
                           </td>
                           <td className="px-4 py-4">
-                            <Badge label={statusLabels[scenario.status]} />
+                            <div className="flex flex-wrap gap-1">
+                              <Badge label={statusLabels[scenario.status]} />
+                              {scenario.aiGenerated && (
+                                <>
+                                  <Badge label="rascunho" variant="draft" />
+                                  <Badge label="assistido por IA" variant="ai" />
+                                </>
+                              )}
+                            </div>
                           </td>
                           <td className="px-4 py-4 text-slate-600">{linkedCases.length}</td>
                           <td className="px-4 py-4 text-slate-600">
@@ -684,11 +696,13 @@ function SummaryMetric({ label, value }: { label: string; value: number }) {
   );
 }
 
-function Badge({ label }: { label: string }) {
-  return (
-    <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-700 ring-1 ring-slate-900/10">
-      {label}
-    </span>
-  );
+function Badge({ label, variant }: { label: string; variant?: "default" | "draft" | "ai" }) {
+  const cls =
+    variant === "draft"
+      ? "rounded-full bg-amber-100 px-2 py-0.5 text-xs font-black text-amber-700 ring-1 ring-amber-300/40"
+      : variant === "ai"
+        ? "rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-700 ring-1 ring-teal-300/40"
+        : "rounded-full bg-white px-3 py-1 text-xs font-black text-slate-700 ring-1 ring-slate-900/10";
+  return <span className={cls}>{label}</span>;
 }
 
