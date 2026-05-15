@@ -9,7 +9,10 @@ description: "Task list template for feature implementation"
 
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 
-**Tests**: The examples below include test tasks. Tests are OPTIONAL - only include them if explicitly requested in the feature specification.
+**Tests**: Include tests required by the FrankInTest constitution. Backend business rules
+require unit tests. Backend API, persistence, permission, credit, and audit boundaries require
+integration tests when applicable. Frontend critical flows require component or E2E tests when
+applicable. AI provider calls MUST be mocked in tests.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -21,10 +24,12 @@ description: "Task list template for feature implementation"
 
 ## Path Conventions
 
-- **Single project**: `src/`, `tests/` at repository root
-- **Web app**: `backend/src/`, `frontend/src/`
-- **Mobile**: `api/src/`, `ios/src/` or `android/src/`
-- Paths shown below assume single project - adjust based on plan.md structure
+- **Frontend**: `apps/web/src/`, `apps/web/tests/`
+- **Backend**: `services/api/src/main/java/com/frankintest/api/`,
+  `services/api/src/test/java/com/frankintest/api/`
+- **Infrastructure**: `infra/`
+- **Documentation**: `docs/`, `specs/[###-feature-name]/`
+- Paths shown below are examples - adjust based on plan.md structure
 
 <!--
   ============================================================================
@@ -69,6 +74,10 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] T007 Create base models/entities that all stories depend on
 - [ ] T008 Configure error handling and logging infrastructure
 - [ ] T009 Setup environment configuration management
+- [ ] T010 Define backend module boundary in services/api for business rules, permissions,
+  credits, AI runs, audit logs, and integrations touched by this feature
+- [ ] T011 Define structured QA artifact persistence and ownership rules when this feature
+  creates requirements, tests, bugs, evidence, reports, drift findings, or AI suggestions
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -80,21 +89,24 @@ Examples of foundational tasks (adjust based on your project):
 
 **Independent Test**: [How to verify this story works on its own]
 
-### Tests for User Story 1 (OPTIONAL - only if tests requested) ⚠️
+### Tests for User Story 1 ⚠️
 
-> **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
+> **NOTE: Write required tests FIRST when changing business rules or protected behavior.
+> AI provider boundaries MUST be mocked.**
 
-- [ ] T010 [P] [US1] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T011 [P] [US1] Integration test for [user journey] in tests/integration/test_[name].py
+- [ ] T012 [P] [US1] Backend unit test for [business rule] in services/api/src/test/java/com/frankintest/api/[module]/
+- [ ] T013 [P] [US1] Backend integration/API test for [endpoint or permission boundary] in services/api/src/test/java/com/frankintest/api/[module]/
+- [ ] T014 [P] [US1] Frontend component or E2E test for [critical flow] in apps/web/tests/
 
 ### Implementation for User Story 1
 
-- [ ] T012 [P] [US1] Create [Entity1] model in src/models/[entity1].py
-- [ ] T013 [P] [US1] Create [Entity2] model in src/models/[entity2].py
-- [ ] T014 [US1] Implement [Service] in src/services/[service].py (depends on T012, T013)
-- [ ] T015 [US1] Implement [endpoint/feature] in src/[location]/[file].py
-- [ ] T016 [US1] Add validation and error handling
-- [ ] T017 [US1] Add logging for user story 1 operations
+- [ ] T015 [P] [US1] Create/update backend domain model in services/api/src/main/java/com/frankintest/api/[module]/
+- [ ] T016 [P] [US1] Create/update frontend UI in apps/web/src/[feature]/
+- [ ] T017 [US1] Implement backend service rules in services/api/src/main/java/com/frankintest/api/[module]/ (depends on T015)
+- [ ] T018 [US1] Implement REST endpoint/controller in services/api/src/main/java/com/frankintest/api/[module]/
+- [ ] T019 [US1] Connect frontend to backend API through approved client boundary in apps/web/src/[feature]/
+- [ ] T020 [US1] Add backend validation, permission checks, entitlement/credit checks, and audit logging as applicable
+- [ ] T021 [US1] Ensure UI copy is pt-BR and no secrets/provider calls exist in frontend code
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -106,17 +118,19 @@ Examples of foundational tasks (adjust based on your project):
 
 **Independent Test**: [How to verify this story works on its own]
 
-### Tests for User Story 2 (OPTIONAL - only if tests requested) ⚠️
+### Tests for User Story 2 ⚠️
 
-- [ ] T018 [P] [US2] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T019 [P] [US2] Integration test for [user journey] in tests/integration/test_[name].py
+- [ ] T022 [P] [US2] Backend unit test for [business rule] in services/api/src/test/java/com/frankintest/api/[module]/
+- [ ] T023 [P] [US2] Backend integration/API test for [endpoint or permission boundary] in services/api/src/test/java/com/frankintest/api/[module]/
+- [ ] T024 [P] [US2] Frontend component or E2E test for [critical flow] in apps/web/tests/
 
 ### Implementation for User Story 2
 
-- [ ] T020 [P] [US2] Create [Entity] model in src/models/[entity].py
-- [ ] T021 [US2] Implement [Service] in src/services/[service].py
-- [ ] T022 [US2] Implement [endpoint/feature] in src/[location]/[file].py
-- [ ] T023 [US2] Integrate with User Story 1 components (if needed)
+- [ ] T025 [P] [US2] Create/update backend domain model in services/api/src/main/java/com/frankintest/api/[module]/
+- [ ] T026 [US2] Implement backend service rules in services/api/src/main/java/com/frankintest/api/[module]/
+- [ ] T027 [US2] Implement REST endpoint/controller in services/api/src/main/java/com/frankintest/api/[module]/
+- [ ] T028 [US2] Implement frontend flow in apps/web/src/[feature]/
+- [ ] T029 [US2] Integrate with User Story 1 components (if needed)
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
 
@@ -128,16 +142,18 @@ Examples of foundational tasks (adjust based on your project):
 
 **Independent Test**: [How to verify this story works on its own]
 
-### Tests for User Story 3 (OPTIONAL - only if tests requested) ⚠️
+### Tests for User Story 3 ⚠️
 
-- [ ] T024 [P] [US3] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T025 [P] [US3] Integration test for [user journey] in tests/integration/test_[name].py
+- [ ] T030 [P] [US3] Backend unit test for [business rule] in services/api/src/test/java/com/frankintest/api/[module]/
+- [ ] T031 [P] [US3] Backend integration/API test for [endpoint or permission boundary] in services/api/src/test/java/com/frankintest/api/[module]/
+- [ ] T032 [P] [US3] Frontend component or E2E test for [critical flow] in apps/web/tests/
 
 ### Implementation for User Story 3
 
-- [ ] T026 [P] [US3] Create [Entity] model in src/models/[entity].py
-- [ ] T027 [US3] Implement [Service] in src/services/[service].py
-- [ ] T028 [US3] Implement [endpoint/feature] in src/[location]/[file].py
+- [ ] T033 [P] [US3] Create/update backend domain model in services/api/src/main/java/com/frankintest/api/[module]/
+- [ ] T034 [US3] Implement backend service rules in services/api/src/main/java/com/frankintest/api/[module]/
+- [ ] T035 [US3] Implement REST endpoint/controller in services/api/src/main/java/com/frankintest/api/[module]/
+- [ ] T036 [US3] Implement frontend flow in apps/web/src/[feature]/
 
 **Checkpoint**: All user stories should now be independently functional
 
@@ -154,9 +170,16 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX [P] Documentation updates in docs/
 - [ ] TXXX Code cleanup and refactoring
 - [ ] TXXX Performance optimization across all stories
-- [ ] TXXX [P] Additional unit tests (if requested) in tests/unit/
+- [ ] TXXX [P] Additional backend unit/integration tests in services/api/src/test/java/com/frankintest/api/
+- [ ] TXXX [P] Additional frontend component/E2E tests in apps/web/tests/
 - [ ] TXXX Security hardening
+- [ ] TXXX Verify AI outputs are structured QA artifacts and AI providers are mocked in tests
+- [ ] TXXX Verify credit estimation, failure handling, and audit events for expensive AI operations
+- [ ] TXXX Verify all new MVP UI copy is pt-BR
 - [ ] TXXX Run quickstart.md validation
+- [ ] TXXX Produce required run report with changed files, functionality, preserved business
+  rules, tests, validation commands, limitations, roadmap/status updates, and suggested commit
+  message
 
 ---
 
@@ -179,7 +202,8 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Within Each User Story
 
-- Tests (if included) MUST be written and FAIL before implementation
+- Required tests MUST be written before implementation when changing business rules or
+  protected behavior
 - Models before services
 - Services before endpoints
 - Core implementation before integration
@@ -246,7 +270,7 @@ With multiple developers:
 - [P] tasks = different files, no dependencies
 - [Story] label maps task to specific user story for traceability
 - Each user story should be independently completable and testable
-- Verify tests fail before implementing
-- Commit after each task or logical group
+- Verify required tests fail before implementing when practical
+- Do not commit automatically; the human developer commits manually
 - Stop at any checkpoint to validate story independently
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence

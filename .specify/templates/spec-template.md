@@ -92,16 +92,33 @@
 - **FR-003**: Users MUST be able to [key interaction, e.g., "reset their password"]
 - **FR-004**: System MUST [data requirement, e.g., "persist user preferences"]
 - **FR-005**: System MUST [behavior, e.g., "log all security events"]
+- **FR-006**: System MUST preserve FrankInTest responsibility boundaries: UX in `apps/web`;
+  business rules, persistence, permissions, credits, AI orchestration, audit logs,
+  integrations, and security decisions in `services/api`.
+- **FR-007**: If AI is used, System MUST produce or update structured QA artifacts rather than
+  loose chat output.
+- **FR-008**: If the feature performs expensive AI work, System MUST estimate credits before
+  execution and track the AI run server-side.
+- **FR-009**: If protected data is accessed or mutated, System MUST validate organization and
+  project access on the backend.
+- **FR-010**: New MVP UI copy MUST be in Brazilian Portuguese (`pt-BR`).
 
 *Example of marking unclear requirements:*
 
-- **FR-006**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
-- **FR-007**: System MUST retain user data for [NEEDS CLARIFICATION: retention period not specified]
 
 ### Key Entities *(include if feature involves data)*
 
 - **[Entity 1]**: [What it represents, key attributes without implementation]
 - **[Entity 2]**: [What it represents, relationships to other entities]
+
+### QA Artifact Impact *(include if feature involves AI or QA workflow data)*
+
+- **Artifacts created/updated**: [e.g., requirement, business rule, test scenario, test case,
+  test cycle, bug report, evidence summary, risk item, release readiness report, drift finding]
+- **AI run tracking**: [Required / Not applicable, with reason]
+- **Credit impact**: [Estimated before execution / No credit impact, with reason]
+- **Audit events**: [Sensitive actions or data access events to audit]
+- **Sensitive data handling**: [Evidence/report/project data safeguards]
 
 ## Success Criteria *(mandatory)*
 

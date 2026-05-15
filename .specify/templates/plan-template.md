@@ -18,17 +18,17 @@
   the iteration process.
 -->
 
-**Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]
+**Language/Version**: [Next.js/TypeScript in apps/web and/or Java 21+ Spring Boot in services/api, or NEEDS CLARIFICATION]
 
-**Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]
+**Primary Dependencies**: [e.g., Next.js, Tailwind, Spring Boot, PostgreSQL, or NEEDS CLARIFICATION]
 
-**Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
+**Storage**: [PostgreSQL for persistent product data, or N/A with rationale]
 
-**Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]
+**Testing**: [frontend component/E2E tests and/or backend unit/integration tests, or NEEDS CLARIFICATION]
 
 **Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
 
-**Project Type**: [e.g., library/cli/web-service/mobile-app/compiler/desktop-app or NEEDS CLARIFICATION]
+**Project Type**: [FrankInTest vertical slice: apps/web, services/api, infra, docs, or NEEDS CLARIFICATION]
 
 **Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]
 
@@ -40,7 +40,24 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- **Architecture boundary**: Does the plan keep UI in `apps/web`, trusted business logic in
+  `services/api`, PostgreSQL as source of truth, and local infra in `infra/`?
+- **Modular monolith**: Does backend work remain inside the Spring Boot modular monolith for
+  MVP, without introducing microservices?
+- **Responsibility boundary**: Are permissions, credits, entitlements, persistence, AI
+  orchestration, integrations, audit logs, and security decisions enforced by the backend?
+- **AI governance**: If AI is involved, does it produce structured QA artifacts, track AI runs
+  server-side, estimate credits before expensive work, avoid unfair credit consumption on
+  platform failures, and use mocked providers in tests?
+- **Security/LGPD**: Are secrets server-side only, protected backend requests validating
+  organization/project access, sensitive actions audited, URL check-up explicitly authorized,
+  and invasive scans excluded from MVP?
+- **Product language**: Is all new MVP UI copy in `pt-BR` with no new `en`/`es` UI surface?
+- **Testing discipline**: Are backend business rules covered by unit tests, backend API and
+  persistence boundaries covered by integration tests when applicable, and frontend critical
+  flows covered by component or E2E tests when applicable?
+- **Execution discipline**: Is scope small and traceable, with no unrelated refactors or
+  architecture changes lacking matching docs/spec updates?
 
 ## Project Structure
 
@@ -65,39 +82,20 @@ specs/[###-feature]/
 -->
 
 ```text
-# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
-src/
-├── models/
-├── services/
-├── cli/
-└── lib/
-
-tests/
-├── contract/
-├── integration/
-└── unit/
-
-# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
-backend/
+apps/web/
 ├── src/
-│   ├── models/
-│   ├── services/
-│   └── api/
+├── public/
 └── tests/
 
-frontend/
-├── src/
-│   ├── components/
-│   ├── pages/
-│   └── services/
-└── tests/
+services/api/
+├── src/main/java/com/frankintest/api/
+└── src/test/java/com/frankintest/api/
 
-# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
-api/
-└── [same as backend above]
+infra/
+└── docker-compose.yml
 
-ios/ or android/
-└── [platform-specific structure: feature modules, UI flows, platform tests]
+docs/
+└── [feature/product documentation updates when applicable]
 ```
 
 **Structure Decision**: [Document the selected structure and reference the real
