@@ -4,6 +4,7 @@ import { FormEvent, useMemo, useState } from "react";
 
 import type { BusinessRule, ProductModule, Requirement } from "@/lib/business-understanding/types";
 import type { Project } from "@/lib/projects/types";
+import { AiGenerationModal } from "./AiGenerationModal";
 import {
   createTestScenario,
   demoTestCases,
@@ -134,6 +135,7 @@ export function TestScenarioSection({
   });
   const [editingScenarioId, setEditingScenarioId] = useState<string | null>(null);
   const [validationError, setValidationError] = useState(false);
+  const [aiModalOpen, setAiModalOpen] = useState(false);
 
   const projectModules = useMemo(
     () => modules.filter((module) => module.projectId === activeProjectId),
@@ -264,6 +266,37 @@ export function TestScenarioSection({
     }
 
     resetForm(activeProjectId);
+  }
+
+  function handleAiOutputAccepted(output: string, aiRunId: string) {
+    const linkedRule = requirementBusinessRules.find((rule) => rule.id === activeBusinessRuleId);
+    const linkedRequirement = moduleRequirements.find(
+      (req) => req.id === (linkedRule?.requirementId ?? activeRequirementId),
+    );
+    const linkedModule = projectModules.find(
+      (mod) => mod.id === (linkedRule?.moduleId ?? linkedRequirement?.moduleId ?? activeModuleId),
+    );
+
+    const input: TestScenarioInput = {
+      projectId: activeProjectId,
+      moduleId: linkedModule?.id ?? activeModuleId,
+      requirementId: linkedRequirement?.id ?? activeRequirementId,
+      businessRuleId: linkedRule?.id ?? activeBusinessRuleId,
+      title: `[IA] Cenários para: ${linkedRule?.title ?? activeBusinessRuleId}`,
+      description: output,
+      scenarioType: "positive",
+      priority: "medium",
+      status: "draft",
+      testLevel: "acceptance",
+      aiGenerated: true,
+      reviewedBy: "",
+    };
+
+    if (validateTestScenarioInput(input).length === 0) {
+      persistScenarios([createTestScenario(input), ...scenarios]);
+    }
+
+    void aiRunId;
   }
 
   function startEditingScenario(scenario: TestScenario) {
@@ -478,6 +511,15 @@ export function TestScenarioSection({
               >
                 {editingScenarioId ? "Salvar alterações" : "Criar cenário"}
               </button>
+              {!editingScenarioId && activeBusinessRuleId ? (
+                <button
+                  type="button"
+                  className="rounded-xl border border-teal-700/30 bg-teal-50 px-4 py-2 text-sm font-black text-teal-800 transition hover:bg-teal-100"
+                  onClick={() => setAiModalOpen(true)}
+                >
+                  Gerar cenários com IA
+                </button>
+              ) : null}
               {editingScenarioId ? (
                 <button
                   type="button"
@@ -582,6 +624,21 @@ export function TestScenarioSection({
           )}
         </section>
       </div>
+
+      {aiModalOpen && activeBusinessRuleId ? (
+        <AiGenerationModal
+          isOpen={aiModalOpen}
+          mode="scenarios"
+          projectId={activeProjectId}
+          businessRuleId={activeBusinessRuleId}
+          businessRuleTitle={
+            requirementBusinessRules.find((r) => r.id === activeBusinessRuleId)?.title ??
+            activeBusinessRuleId
+          }
+          onClose={() => setAiModalOpen(false)}
+          onAccept={handleAiOutputAccepted}
+        />
+      ) : null}
     </section>
   );
 }

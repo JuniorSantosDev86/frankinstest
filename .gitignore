@@ -12,9 +12,10 @@ out/
 dist/
 build/
 
-# --- Backend (services/api) ---
-services/api/target/
-services/api/.mvn/wrapper/maven-wrapper.jar
+# --- Backend (services/*) ---
+target/
+**/target/
+**/.mvn/wrapper/maven-wrapper.jar
 *.class
 *.jar
 *.war
