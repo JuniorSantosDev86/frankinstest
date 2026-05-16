@@ -60,6 +60,46 @@ class AiTestDesignControllerTest {
             .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
     }
 
+    @Test
+    void estimate_unsupportedGenerationType_returns400BeforeOrchestration() throws Exception {
+        Map<String, Object> body = Map.of(
+            "organizationId", "org_test",
+            "projectId", "proj_test",
+            "generationType", "generic_prompt",
+            "sourceArtifactId", "rule_001"
+        );
+
+        mockMvc.perform(post("/api/ai/test-design/estimate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(body)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+    }
+
+    @Test
+    void estimate_withoutUserId_usesLocalMockedAuthBoundary() throws Exception {
+        Map<String, Object> body = Map.of(
+            "organizationId", "org_test",
+            "projectId", "proj_test",
+            "generationType", "test_cases_from_scenario",
+            "sourceArtifactId", "scenario_001"
+        );
+
+        mockMvc.perform(post("/api/ai/test-design/estimate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(body)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.estimatedCredits").isNumber());
+    }
+
+    @Test
+    void estimate_malformedJson_returns400() throws Exception {
+        mockMvc.perform(post("/api/ai/test-design/estimate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"organizationId\":\"org_test\""))
+            .andExpect(status().isBadRequest());
+    }
+
     // T024 — US1: POST /api/ai/test-design/scenarios success with persistence
     @Test
     void generateScenarios_validRequest_returns201WithDraftArtifacts() throws Exception {
@@ -127,6 +167,14 @@ class AiTestDesignControllerTest {
             .andExpect(status().isBadRequest());
     }
 
+    @Test
+    void generateScenarios_malformedJson_returns400() throws Exception {
+        mockMvc.perform(post("/api/ai/test-design/scenarios")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"organizationId\":\"org_test\""))
+            .andExpect(status().isBadRequest());
+    }
+
     // T041 — US2: POST /api/ai/test-design/test-cases success
     @Test
     void generateTestCases_validRequest_returns201WithDraftArtifacts() throws Exception {
@@ -162,5 +210,21 @@ class AiTestDesignControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(body)))
             .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void generateTestCases_zeroCredits_returns400() throws Exception {
+        Map<String, Object> body = Map.of(
+            "organizationId", "org_test",
+            "projectId", "proj_test",
+            "scenarioId", "scenario_001",
+            "confirmedEstimatedCredits", 0
+        );
+
+        mockMvc.perform(post("/api/ai/test-design/test-cases")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(body)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
     }
 }

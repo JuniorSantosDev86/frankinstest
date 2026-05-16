@@ -1,5 +1,7 @@
 # Tasks: AI Test Design Assistance
 
+> Historical SDD artifact. This file records the original Bloco 09A/09B task generation and interim execution notes. It is not the current product status after Bloco 09C. Current AI foundation status, cleanup decisions, and validation results are tracked in `specs/002-ai-foundation-cleanup/`, `docs/CURRENT_STATUS.md`, `docs/API_DESIGN.md`, and `docs/ARCHITECTURE.md`.
+
 **Input**: Design documents from `/specs/001-ai-test-design/`
 
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/ai-test-design.openapi.yaml, quickstart.md

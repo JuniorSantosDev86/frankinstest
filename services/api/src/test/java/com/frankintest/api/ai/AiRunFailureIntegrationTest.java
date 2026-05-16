@@ -117,4 +117,50 @@ class AiRunFailureIntegrationTest {
         CreditModels.CreditBalance afterBalance = creditRepository.getOrCreateBalance(orgId);
         assertThat(afterBalance.availableCredits()).isEqualTo(available);
     }
+
+    @Test
+    void generateScenarios_providerFailure_returns502AndReleasesCredits() throws Exception {
+        String orgId = "org_provider_" + UUID.randomUUID();
+        long before = creditRepository.getOrCreateBalance(orgId).availableCredits();
+
+        Map<String, Object> body = Map.of(
+            "organizationId", orgId,
+            "projectId", "proj_provider_test",
+            "businessRuleId", "rule_provider_001",
+            "confirmedEstimatedCredits", 30,
+            "context", "force-provider-failure"
+        );
+
+        mockMvc.perform(post("/api/ai/test-design/scenarios")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(body)))
+            .andExpect(status().isBadGateway())
+            .andExpect(jsonPath("$.code").value("PROVIDER_FAILURE"));
+
+        long after = creditRepository.getOrCreateBalance(orgId).availableCredits();
+        assertThat(after).isEqualTo(before);
+    }
+
+    @Test
+    void generateScenarios_invalidProviderOutput_returns502AndReleasesCredits() throws Exception {
+        String orgId = "org_output_" + UUID.randomUUID();
+        long before = creditRepository.getOrCreateBalance(orgId).availableCredits();
+
+        Map<String, Object> body = Map.of(
+            "organizationId", orgId,
+            "projectId", "proj_output_test",
+            "businessRuleId", "rule_output_001",
+            "confirmedEstimatedCredits", 30,
+            "context", "force-invalid-output"
+        );
+
+        mockMvc.perform(post("/api/ai/test-design/scenarios")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(body)))
+            .andExpect(status().isBadGateway())
+            .andExpect(jsonPath("$.code").value("OUTPUT_VALIDATION_FAILURE"));
+
+        long after = creditRepository.getOrCreateBalance(orgId).availableCredits();
+        assertThat(after).isEqualTo(before);
+    }
 }

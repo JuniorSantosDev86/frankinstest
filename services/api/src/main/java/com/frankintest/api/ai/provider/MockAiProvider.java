@@ -7,6 +7,12 @@ public class MockAiProvider implements AiProviderPort {
 
     @Override
     public AiProviderResponse generate(String prompt) {
+        if (prompt.contains("force-provider-failure")) {
+            return generateWithForcedFailure();
+        }
+        if (prompt.contains("force-invalid-output")) {
+            return AiProviderResponse.success("{\"content\":\"sem artefatos estruturados\"}", 100, 100);
+        }
         String content = buildMockContent(prompt);
         int inputTokens = Math.max(1, prompt.length() / 4);
         int outputTokens = Math.max(64, content.length() / 4);

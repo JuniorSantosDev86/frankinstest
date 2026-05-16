@@ -31,6 +31,9 @@ public class AiTestDesignController {
         if (body.generationType() == null || body.generationType().isBlank()) {
             return badRequest("INVALID_INPUT", "generationType é obrigatório");
         }
+        if (!isSupportedGenerationType(body.generationType())) {
+            return badRequest("INVALID_INPUT", "generationType inválido");
+        }
         if (body.sourceArtifactId() == null || body.sourceArtifactId().isBlank()) {
             return badRequest("INVALID_INPUT", "sourceArtifactId é obrigatório");
         }
@@ -125,6 +128,11 @@ public class AiTestDesignController {
 
     private String resolveUserId(String userId) {
         return (userId != null && !userId.isBlank()) ? userId : "user_default";
+    }
+
+    private boolean isSupportedGenerationType(String generationType) {
+        return "scenarios_from_business_rule".equals(generationType)
+            || "test_cases_from_scenario".equals(generationType);
     }
 
     private ResponseEntity<ApiErrorResponse> badRequest(String code, String message) {

@@ -184,7 +184,7 @@ Ao final de cada bloco, reportar:
 
 <!-- SPECKIT START -->
 Current Spec Kit plan:
-- `specs/001-ai-test-design/plan.md`
+- `specs/002-ai-foundation-cleanup/plan.md`
 
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan above.
