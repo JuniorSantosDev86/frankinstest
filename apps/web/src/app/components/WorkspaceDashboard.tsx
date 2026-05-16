@@ -2,18 +2,17 @@
 
 import type { ReactNode } from "react";
 
+import {
+  workspaceNavigationTargets,
+  type WorkspaceDetailDomain,
+} from "../workspaceNavigation";
 import { MetricCard } from "./MetricCard";
 import { TraceabilityFlow, type TraceabilityNode } from "./TraceabilityFlow";
 import { ApiStatusBadge } from "./ApiStatusBadge";
 
 type SidebarGroup = {
   title: string;
-  items: {
-    label: string;
-    href: string;
-    status?: string;
-    disabled?: boolean;
-  }[];
+  items: typeof workspaceNavigationTargets;
 };
 
 type TopBarProject = {
@@ -22,6 +21,8 @@ type TopBarProject = {
 };
 
 type DashboardOverviewProps = {
+  activeHash: string;
+  onNavigate: (hash: string) => void;
   activeProjectName: string;
   projectCount: number;
   executionCount: number;
@@ -39,70 +40,46 @@ type DashboardOverviewProps = {
 };
 
 type WorkspaceDetailTab = {
-  id: string;
+  id: Exclude<WorkspaceDetailDomain, "control-tower">;
   label: string;
   description: string;
 };
 
 type WorkspaceDetailAreaProps = {
-  activeTab: string;
+  activeTab: WorkspaceDetailTab["id"];
   tabs: WorkspaceDetailTab[];
   children: ReactNode;
-  onChange: (tabId: string) => void;
+  onChange: (tabId: WorkspaceDetailTab["id"]) => void;
 };
 
 const sidebarGroups: SidebarGroup[] = [
   {
     title: "Visão geral",
-    items: [{ label: "Control Tower", href: "#control-tower", status: "Ativo" }],
+    items: workspaceNavigationTargets.filter((target) => target.group === "Visão geral"),
   },
   {
     title: "Produto",
-    items: [
-      { label: "Projetos", href: "#workspace-produto-projetos" },
-      { label: "Módulos", href: "#workspace-produto-modulos" },
-      { label: "Requisitos", href: "#workspace-produto-requisitos" },
-      { label: "Regras de negócio", href: "#workspace-produto-regras" },
-    ],
+    items: workspaceNavigationTargets.filter((target) => target.group === "Produto"),
   },
   {
     title: "QA Design",
-    items: [
-      { label: "Cenários de teste", href: "#workspace-qa-design-cenarios" },
-      { label: "Casos de teste", href: "#workspace-qa-design-casos" },
-      { label: "Suítes de teste", href: "#workspace-qa-design-suites" },
-    ],
+    items: workspaceNavigationTargets.filter((target) => target.group === "QA Design"),
   },
   {
     title: "Execução",
-    items: [
-      { label: "Ciclos de teste", href: "#workspace-execucao-ciclos" },
-      { label: "Execução de testes", href: "#workspace-execucao-testes" },
-    ],
+    items: workspaceNavigationTargets.filter((target) => target.group === "Execução"),
   },
   {
     title: "Qualidade",
-    items: [
-      { label: "Bugs e defeitos", href: "#workspace-qualidade-bugs" },
-      { label: "Evidências", href: "#workspace-qualidade-evidencias" },
-      { label: "Relatórios", href: "#workspace-relatorios" },
-    ],
+    items: workspaceNavigationTargets.filter((target) => target.group === "Qualidade"),
   },
   {
     title: "IA",
-    items: [
-      { label: "IA e créditos", href: "#workspace-ia-creditos" },
-      {
-        label: "Assistência de design de testes",
-        href: "#workspace-ia-design-em-breve",
-        status: "Em breve",
-        disabled: true,
-      },
-    ],
+    items: workspaceNavigationTargets.filter((target) => target.group === "IA"),
   },
   {
     title: "Configurações",
-    items: [{ label: "Configurações", href: "#workspace-configuracoes" }],
+    items: workspaceNavigationTargets.filter((target) => target.group === "Configurações"),
   },
 ];
 
@@ -142,14 +119,18 @@ export const workspaceDetailTabs: WorkspaceDetailTab[] = [
 export function AppShell({
   children,
   topBar,
+  activeHash,
+  onNavigate,
 }: {
   children: ReactNode;
   topBar: ReactNode;
+  activeHash: string;
+  onNavigate: (hash: string) => void;
 }) {
   return (
     <main className="min-h-screen bg-slate-50 text-slate-950">
       <div className="flex min-h-screen flex-col lg:flex-row">
-        <SidebarNav />
+        <SidebarNav activeHash={activeHash} onNavigate={onNavigate} />
         <section className="min-w-0 flex-1">
           {topBar}
           <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
@@ -161,7 +142,13 @@ export function AppShell({
   );
 }
 
-function SidebarNav() {
+function SidebarNav({
+  activeHash,
+  onNavigate,
+}: {
+  activeHash: string;
+  onNavigate: (hash: string) => void;
+}) {
   return (
     <aside className="border-slate-800 bg-slate-950 text-white lg:sticky lg:top-0 lg:h-screen lg:w-72 lg:border-r">
       <div className="flex h-full flex-col gap-5 p-5">
@@ -184,11 +171,20 @@ function SidebarNav() {
               <div className="mt-2 grid gap-1">
                 {group.items.map((item) => (
                   <a
-                    key={item.href}
+                    key={item.hash}
+                    aria-current={activeHash === item.hash ? "page" : undefined}
                     aria-disabled={item.disabled ? "true" : undefined}
-                    href={item.href}
+                    href={item.disabled ? undefined : item.hash}
+                    tabIndex={item.disabled ? -1 : undefined}
+                    onClick={(event) => {
+                      event.preventDefault();
+
+                      if (!item.disabled) {
+                        onNavigate(item.hash);
+                      }
+                    }}
                     className={`group flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-cyan-300 ${
-                      item.href === "#control-tower"
+                      activeHash === item.hash
                         ? "border-cyan-300/40 bg-cyan-300/15 text-white"
                         : item.disabled
                           ? "border-transparent text-slate-500"
@@ -417,6 +413,7 @@ function DomainOverviewGrid(props: DashboardOverviewProps) {
         description="Visão geral dos artefatos de design de testes."
         cta="Ir para QA Design"
         href="#workspace-qa-design-cenarios"
+        onNavigate={props.onNavigate}
         badge="MVP local"
         metrics={[
           { label: "Cenários de teste", value: props.scenarioCount, progress: 78, tone: "teal" },
@@ -429,6 +426,7 @@ function DomainOverviewGrid(props: DashboardOverviewProps) {
         description="Acompanhe ciclos e execuções em andamento."
         cta="Ir para Execução"
         href="#workspace-execucao-ciclos"
+        onNavigate={props.onNavigate}
         badge="Mock"
         metrics={[
           { label: "Ciclos ativos", value: props.activeCycleCount, progress: 56, tone: "blue" },
@@ -441,6 +439,7 @@ function DomainOverviewGrid(props: DashboardOverviewProps) {
         description="Qualidade do produto e registro de evidências."
         cta="Ir para Qualidade"
         href="#workspace-qualidade-bugs"
+        onNavigate={props.onNavigate}
         metrics={[
           { label: "Bugs abertos", value: props.openBugCount, progress: 45, tone: "rose" },
           { label: "Bugs críticos", value: props.criticalBugCount, progress: 18, tone: "rose" },
@@ -452,6 +451,7 @@ function DomainOverviewGrid(props: DashboardOverviewProps) {
         description="Relatórios gerenciais e qualidade de comunicação."
         cta="Ver relatórios"
         href="#workspace-relatorios"
+        onNavigate={props.onNavigate}
         badge="Mock"
         metrics={[
           { label: "Relatórios recentes", value: props.reportCount, progress: 64, tone: "blue" },
@@ -464,6 +464,7 @@ function DomainOverviewGrid(props: DashboardOverviewProps) {
         description="Uso de IA e estimativas de créditos."
         cta="Gerenciar IA e créditos"
         href="#workspace-ia-creditos"
+        onNavigate={props.onNavigate}
         badge="Assistido por IA"
         metrics={[
           { label: "Créditos disponíveis", value: props.aiCredits, progress: 68, tone: "violet" },
@@ -482,6 +483,7 @@ function DomainOverviewCard({
   metrics,
   cta,
   href,
+  onNavigate,
   badge,
 }: {
   title: string;
@@ -489,6 +491,7 @@ function DomainOverviewCard({
   metrics: { label: string; value: number; progress: number; tone: ProgressTone }[];
   cta: string;
   href: string;
+  onNavigate: (hash: string) => void;
   badge?: string;
 }) {
   return (
@@ -514,6 +517,10 @@ function DomainOverviewCard({
       <a
         className="mt-5 inline-flex text-sm font-black text-blue-700 transition hover:text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-300"
         href={href}
+        onClick={(event) => {
+          event.preventDefault();
+          onNavigate(href);
+        }}
       >
         {cta}
       </a>
@@ -564,6 +571,8 @@ export function WorkspaceDetailArea({
   return (
     <section
       id="workspace-details"
+      tabIndex={-1}
+      aria-labelledby="workspace-detail-title"
       className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/70 md:p-6"
     >
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -572,7 +581,7 @@ export function WorkspaceDetailArea({
             WorkspaceDetailArea
           </p>
           <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">
-            Área de trabalho por domínio
+            <span id="workspace-detail-title">Área de trabalho por domínio</span>
           </h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">{activeTabCopy.description}</p>
         </div>

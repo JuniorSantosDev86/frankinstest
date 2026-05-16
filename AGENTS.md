@@ -184,7 +184,7 @@ Ao final de cada bloco, reportar:
 
 <!-- SPECKIT START -->
 Current Spec Kit plan:
-- `specs/002-ai-foundation-cleanup/plan.md`
+- `specs/003-workspace-navigation-fix/plan.md`
 
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan above.

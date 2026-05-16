@@ -69,7 +69,8 @@ const workspaceDashboardSource = readFileSync(
   "src/app/components/WorkspaceDashboard.tsx",
   "utf8",
 );
-const productSource = `${pageSource}\n${i18nSource}\n${testScenarioSectionSource}\n${testCaseSectionSource}\n${testSuiteSectionSource}\n${testCycleSectionSource}\n${testExecutionSectionSource}\n${bugReportSectionSource}\n${evidenceSectionSource}\n${reportSectionSource}\n${aiUsageSectionSource}\n${metricCardSource}\n${traceabilityFlowSource}\n${insightCardsSource}\n${quickActionsSource}\n${workspaceDashboardSource}`;
+const workspaceNavigationSource = readFileSync("src/app/workspaceNavigation.ts", "utf8");
+const productSource = `${pageSource}\n${i18nSource}\n${testScenarioSectionSource}\n${testCaseSectionSource}\n${testSuiteSectionSource}\n${testCycleSectionSource}\n${testExecutionSectionSource}\n${bugReportSectionSource}\n${evidenceSectionSource}\n${reportSectionSource}\n${aiUsageSectionSource}\n${metricCardSource}\n${traceabilityFlowSource}\n${insightCardsSource}\n${quickActionsSource}\n${workspaceDashboardSource}\n${workspaceNavigationSource}`;
 const projectTypesSource = readFileSync("src/lib/projects/types.ts", "utf8");
 const projectServiceSource = readFileSync("src/lib/projects/projectService.ts", "utf8");
 const businessTypesSource = readFileSync("src/lib/business-understanding/types.ts", "utf8");
@@ -103,6 +104,7 @@ const reportTypesModule = loadTsModule("src/lib/reports/types");
 const reportService = loadTsModule("src/lib/reports/reportService");
 const aiUsageTypes = loadTsModule("src/lib/ai-usage/types");
 const aiUsageService = loadTsModule("src/lib/ai-usage/aiUsageService");
+const workspaceNavigation = loadTsModule("src/app/workspaceNavigation");
 
 test("FrankInTest shell exposes the required navigation sections", () => {
   [
@@ -183,7 +185,7 @@ test("sidebar navigation includes expected QA workspace items", () => {
     "Assistência de design de testes",
     "Configurações",
   ].forEach((item) => {
-    assert.match(workspaceDashboardSource, new RegExp(item));
+    assert.match(productSource, new RegExp(item));
   });
 });
 
@@ -3361,20 +3363,106 @@ test("workspace detail area groups existing CRUD sections by product domain", ()
   });
 });
 
+test("workspace navigation registry maps enabled sidebar items to active domains", () => {
+  const enabledTargets = workspaceNavigation.enabledWorkspaceNavigationTargets;
+
+  assert.ok(enabledTargets.length >= 14);
+  assert.equal(enabledTargets.some((target) => target.disabled), false);
+
+  [
+    ["#control-tower", "control-tower", "control-tower"],
+    ["#workspace-produto-projetos", "produto", "projects"],
+    ["#workspace-produto-modulos", "produto", "business-understanding"],
+    ["#workspace-produto-requisitos", "produto", "business-understanding"],
+    ["#workspace-produto-regras", "produto", "business-understanding"],
+    ["#workspace-qa-design-cenarios", "qa-design", "test-scenarios"],
+    ["#workspace-qa-design-casos", "qa-design", "test-cases"],
+    ["#workspace-qa-design-suites", "qa-design", "test-suites"],
+    ["#workspace-execucao-ciclos", "execucao", "test-cycles"],
+    ["#workspace-execucao-testes", "execucao", "test-executions"],
+    ["#workspace-qualidade-bugs", "qualidade", "bugs"],
+    ["#workspace-qualidade-evidencias", "qualidade", "evidence"],
+    ["#workspace-relatorios", "relatorios", "reports"],
+    ["#workspace-ia-creditos", "ia-creditos", "ai-usage"],
+  ].forEach(([hash, domainId, sectionId]) => {
+    const state = workspaceNavigation.resolveWorkspaceNavigation(hash);
+
+    assert.equal(state.activeHash, hash);
+    assert.equal(state.activeDomainId, domainId);
+    assert.equal(state.activeSectionId, sectionId);
+    assert.equal(state.fallbackUsed, false);
+  });
+});
+
+test("workspace navigation excludes disabled and future targets from active hash behavior", () => {
+  const disabledTargets = workspaceNavigation.workspaceNavigationTargets.filter(
+    (target) => target.disabled,
+  );
+
+  assert.ok(disabledTargets.some((target) => target.label === "Configurações"));
+  assert.ok(disabledTargets.some((target) => target.label === "Assistência de design de testes"));
+
+  disabledTargets.forEach((target) => {
+    assert.equal(
+      workspaceNavigation.enabledWorkspaceNavigationTargets.some(
+        (enabledTarget) => enabledTarget.hash === target.hash,
+      ),
+      false,
+    );
+    assert.equal(
+      workspaceNavigation.resolveWorkspaceNavigation(target.hash).activeHash,
+      workspaceNavigation.defaultWorkspaceHash,
+    );
+  });
+});
+
+test("workspace navigation falls back for missing, invalid, disabled, and obsolete hashes", () => {
+  ["", "workspace-configuracoes", "#workspace-configuracoes", "#nao-existe"].forEach((hash) => {
+    const state = workspaceNavigation.resolveWorkspaceNavigation(hash);
+
+    assert.equal(state.activeHash, workspaceNavigation.defaultWorkspaceHash);
+    assert.equal(state.activeDomainId, "control-tower");
+    assert.equal(state.activeSectionId, "control-tower");
+    assert.equal(state.fallbackUsed, true);
+  });
+});
+
+test("workspace UI wires enabled sidebar selection to active visible detail area", () => {
+  assert.match(workspaceDashboardSource, /onNavigate\(item\.hash\)/);
+  assert.match(pageSource, /setActiveWorkspaceNavigation\(nextNavigation\)/);
+  assert.match(pageSource, /activeWorkspaceNavigation\.activeDomainId === "control-tower"/);
+  assert.match(pageSource, /activeDetailTab === "qa-design"[\s\S]*<TestScenarioSection/);
+  assert.match(pageSource, /activeDetailTab === "execucao"[\s\S]*<TestCycleSection/);
+  assert.match(pageSource, /activeDetailTab === "qualidade"[\s\S]*<BugReportSection/);
+  assert.match(pageSource, /activeDetailTab === "relatorios"[\s\S]*<ReportSection/);
+  assert.match(pageSource, /activeDetailTab === "ia-creditos"[\s\S]*<AiUsageSection/);
+});
+
+test("workspace navigation keeps hash, tab clicks, and focus mechanics synchronized", () => {
+  assert.match(pageSource, /window\.history\.pushState/);
+  assert.match(pageSource, /window\.history\.replaceState/);
+  assert.match(pageSource, /window\.addEventListener\("hashchange"/);
+  assert.match(pageSource, /getWorkspaceNavigationTargetForDomain\(tabId\)/);
+  assert.match(pageSource, /target\.scrollIntoView/);
+  assert.match(pageSource, /target\.focus\(\{ preventScroll: true \}\)/);
+  assert.match(workspaceDashboardSource, /aria-current=\{activeHash === item\.hash \? "page" : undefined\}/);
+  assert.match(workspaceDashboardSource, /aria-disabled=\{item\.disabled \? "true" : undefined\}/);
+});
+
 test("test case navigation points to the local MVP section", () => {
-  assert.match(workspaceDashboardSource, /label: "Casos de teste", href: "#workspace-qa-design-casos"/);
+  assert.match(workspaceNavigationSource, /label: "Casos de teste"[\s\S]*hash: "#workspace-qa-design-casos"/);
   assert.match(testCaseSectionSource, /id="test-cases"/);
 });
 
 test("test suite navigation points to the local MVP section", () => {
-  assert.match(workspaceDashboardSource, /label: "Suítes de teste", href: "#workspace-qa-design-suites"/);
+  assert.match(workspaceNavigationSource, /label: "Suítes de teste"[\s\S]*hash: "#workspace-qa-design-suites"/);
   assert.match(testSuiteSectionSource, /id="test-suites"/);
 });
 
 test("test execution navigation points to the local MVP section", () => {
   assert.match(
-    workspaceDashboardSource,
-    /label: "Execução de testes", href: "#workspace-execucao-testes"/,
+    workspaceNavigationSource,
+    /label: "Execução de testes"[\s\S]*hash: "#workspace-execucao-testes"/,
   );
   assert.match(testExecutionSectionSource, /id="test-executions"/);
 });

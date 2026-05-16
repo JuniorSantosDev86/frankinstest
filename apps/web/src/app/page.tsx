@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 import { getMockSession } from "@/lib/auth/mockSession";
 import {
@@ -88,11 +88,18 @@ import {
   workspaceDetailTabs,
 } from "./components/WorkspaceDashboard";
 import { getTranslations } from "./i18n";
+import {
+  defaultWorkspaceHash,
+  getWorkspaceNavigationTargetForDomain,
+  resolveWorkspaceNavigation,
+  type ActiveWorkspaceNavigation,
+} from "./workspaceNavigation";
 
 const projectStorageKey = "frankintest.block02.projects";
 const moduleStorageKey = "frankintest.block03.modules";
 const requirementStorageKey = "frankintest.block03.requirements";
 const businessRuleStorageKey = "frankintest.block03.businessRules";
+const defaultWorkspaceNavigation = resolveWorkspaceNavigation(defaultWorkspaceHash);
 
 type ProjectFormState = {
   name: string;
@@ -190,8 +197,48 @@ export default function Home() {
     useState<BusinessRuleFormState>(emptyBusinessRuleForm);
   const [editingBusinessRuleId, setEditingBusinessRuleId] = useState<string | null>(null);
   const [businessRuleValidationError, setBusinessRuleValidationError] = useState(false);
-  const [activeDetailTab, setActiveDetailTab] = useState("produto");
+  const [activeWorkspaceNavigation, setActiveWorkspaceNavigation] =
+    useState<ActiveWorkspaceNavigation>(defaultWorkspaceNavigation);
+  const activeDetailTab =
+    activeWorkspaceNavigation.activeDomainId === "control-tower"
+      ? "produto"
+      : activeWorkspaceNavigation.activeDomainId;
   const session = getMockSession();
+
+  const activateWorkspaceHash = useCallback((hash: string, mode: "push" | "replace" = "push") => {
+    const nextNavigation = resolveWorkspaceNavigation(hash);
+
+    setActiveWorkspaceNavigation(nextNavigation);
+
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const nextUrl =
+      nextNavigation.fallbackUsed && hash
+        ? `${window.location.pathname}${window.location.search}${defaultWorkspaceHash}`
+        : `${window.location.pathname}${window.location.search}${nextNavigation.activeHash}`;
+
+    if (mode === "replace") {
+      window.history.replaceState(null, "", nextUrl);
+      return;
+    }
+
+    if (window.location.hash !== nextNavigation.activeHash) {
+      window.history.pushState(null, "", nextUrl);
+    }
+  }, []);
+
+  const handleDetailTabChange = useCallback(
+    (tabId: typeof activeDetailTab) => {
+      const target = getWorkspaceNavigationTargetForDomain(tabId);
+
+      if (target) {
+        activateWorkspaceHash(target.hash);
+      }
+    },
+    [activateWorkspaceHash],
+  );
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -221,6 +268,48 @@ export default function Home() {
 
     return () => window.clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    const initialTimer = window.setTimeout(() => {
+      if (window.location.hash) {
+        activateWorkspaceHash(window.location.hash, "replace");
+      }
+    }, 0);
+
+    function handleHashChange() {
+      if (window.location.hash) {
+        activateWorkspaceHash(window.location.hash, "replace");
+      } else {
+        setActiveWorkspaceNavigation(defaultWorkspaceNavigation);
+      }
+    }
+
+    window.addEventListener("hashchange", handleHashChange);
+
+    return () => {
+      window.clearTimeout(initialTimer);
+      window.removeEventListener("hashchange", handleHashChange);
+    };
+  }, [activateWorkspaceHash]);
+
+  useEffect(() => {
+    const targetId = activeWorkspaceNavigation.activeSectionId;
+
+    window.requestAnimationFrame(() => {
+      const target = document.getElementById(targetId);
+
+      if (!target) {
+        return;
+      }
+
+      if (!target.hasAttribute("tabindex")) {
+        target.setAttribute("tabindex", "-1");
+      }
+
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      target.focus({ preventScroll: true });
+    });
+  }, [activeWorkspaceNavigation.activeSectionId]);
 
   useEffect(() => {
     if (!hasLoadedLocalWorkspace) {
@@ -586,6 +675,8 @@ export default function Home() {
 
   return (
     <AppShell
+      activeHash={activeWorkspaceNavigation.activeHash}
+      onNavigate={activateWorkspaceHash}
       topBar={
         <TopBar
           activeProjectName={selectedProject?.name ?? "Workspace padrão"}
@@ -602,6 +693,8 @@ export default function Home() {
       }
     >
       <DashboardOverview
+        activeHash={activeWorkspaceNavigation.activeHash}
+        onNavigate={activateWorkspaceHash}
         activeProjectName={selectedProject?.name ?? "Workspace padrão"}
         projectCount={visibleProjects.length}
         executionCount={totalExecutions}
@@ -621,7 +714,7 @@ export default function Home() {
       <WorkspaceDetailArea
         activeTab={activeDetailTab}
         tabs={workspaceDetailTabs}
-        onChange={setActiveDetailTab}
+        onChange={handleDetailTabChange}
       >
         {activeDetailTab === "produto" ? (
           <>
