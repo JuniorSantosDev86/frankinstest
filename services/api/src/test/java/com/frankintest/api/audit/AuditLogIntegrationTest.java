@@ -1,6 +1,8 @@
 package com.frankintest.api.audit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.frankintest.api.BaseIntegrationTest;
+import com.frankintest.api.TestJwtHelper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -21,29 +23,27 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-class AuditLogIntegrationTest {
+class AuditLogIntegrationTest extends BaseIntegrationTest {
 
-    @Autowired
-    private MockMvc mockMvc;
-
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    @Autowired
-    private JdbcTemplate jdbc;
+    @Autowired private MockMvc mockMvc;
+    @Autowired private ObjectMapper objectMapper;
+    @Autowired private JdbcTemplate jdbc;
 
     @Test
     void generateScenarios_writesAuditEvents() throws Exception {
+        // Use a unique org per test run so audit queries are isolated
         String orgId = "org_audit_" + UUID.randomUUID();
+        String token = TestJwtHelper.validToken("user_audit_test", List.of(orgId));
 
         Map<String, Object> body = Map.of(
-            "organizationId", orgId,
             "projectId", "proj_audit_test",
             "businessRuleId", "rule_audit_001",
             "confirmedEstimatedCredits", 30
         );
 
         mockMvc.perform(post("/api/ai/test-design/scenarios")
+                .header("Authorization", TestJwtHelper.bearer(token))
+                .header("X-Organization-Id", orgId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(body)))
             .andExpect(status().isCreated());
@@ -53,7 +53,6 @@ class AuditLogIntegrationTest {
             String.class, orgId
         );
 
-        // ai_run.estimated is only written when /estimate endpoint is called separately
         assertThat(events).contains("credits.reserved", "ai_run.started",
             "credits.captured", "ai_run.completed");
         assertThat(events).anyMatch(e -> e.equals("artifact.ai_draft_created"));

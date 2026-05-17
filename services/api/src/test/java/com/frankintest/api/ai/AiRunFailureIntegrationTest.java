@@ -1,8 +1,9 @@
 package com.frankintest.api.ai;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.frankintest.api.credits.CreditRepository;
+import com.frankintest.api.TestJwtHelper;
 import com.frankintest.api.credits.CreditModels;
+import com.frankintest.api.credits.CreditRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -15,55 +16,47 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-class AiRunFailureIntegrationTest {
+class AiRunFailureIntegrationTest extends com.frankintest.api.BaseIntegrationTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+    @Autowired private MockMvc mockMvc;
+    @Autowired private ObjectMapper objectMapper;
+    @Autowired private CreditRepository creditRepository;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    @Autowired
-    private CreditRepository creditRepository;
-
-    // T057/T058 — provider/output-validation failure releases reserved credits
     @Test
     void generateScenarios_success_consumedCreditsArePositive() throws Exception {
-        String orgId = "org_failure_" + UUID.randomUUID();
-
         Map<String, Object> body = Map.of(
-            "organizationId", orgId,
             "projectId", "proj_failure_test",
             "businessRuleId", "rule_failure_001",
             "confirmedEstimatedCredits", 30
         );
 
         mockMvc.perform(post("/api/ai/test-design/scenarios")
+                .header("Authorization", TestJwtHelper.bearer(TestJwtHelper.validToken()))
+                .header("X-Organization-Id", TestJwtHelper.DEMO_ORG_ID)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(body)))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.consumedCredits").isNumber());
     }
 
-    // T059 — GET /api/ai/runs/{aiRunId} returns safe metadata after a successful run
     @Test
     void generateScenarios_thenGetRunStatus_returnsSafeMetadata() throws Exception {
-        String orgId = "org_status_" + UUID.randomUUID();
-
         Map<String, Object> body = Map.of(
-            "organizationId", orgId,
             "projectId", "proj_status_test",
             "businessRuleId", "rule_status_001",
             "confirmedEstimatedCredits", 30
         );
 
         String responseJson = mockMvc.perform(post("/api/ai/test-design/scenarios")
+                .header("Authorization", TestJwtHelper.bearer(TestJwtHelper.validToken()))
+                .header("X-Organization-Id", TestJwtHelper.DEMO_ORG_ID)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(body)))
             .andExpect(status().isCreated())
@@ -72,8 +65,9 @@ class AiRunFailureIntegrationTest {
         String aiRunId = objectMapper.readTree(responseJson).path("aiRunId").asText();
         assertThat(aiRunId).isNotBlank();
 
-        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                .get("/api/ai/runs/" + aiRunId))
+        mockMvc.perform(get("/api/ai/runs/" + aiRunId)
+                .header("Authorization", TestJwtHelper.bearer(TestJwtHelper.validToken()))
+                .header("X-Organization-Id", TestJwtHelper.DEMO_ORG_ID))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.aiRunId").value(aiRunId))
             .andExpect(jsonPath("$.status").value("completed"))
@@ -81,50 +75,48 @@ class AiRunFailureIntegrationTest {
             .andExpect(jsonPath("$.consumedCredits").isNumber());
     }
 
-    // T059 — unknown aiRunId returns 404
     @Test
     void getRunStatus_unknownId_returns404() throws Exception {
-        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                .get("/api/ai/runs/nonexistent_run_xyz"))
+        mockMvc.perform(get("/api/ai/runs/nonexistent_run_xyz")
+                .header("Authorization", TestJwtHelper.bearer(TestJwtHelper.validToken()))
+                .header("X-Organization-Id", TestJwtHelper.DEMO_ORG_ID))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.code").value("RUN_NOT_FOUND"));
     }
 
-    // T057 — insufficient credits returns 402 and credits are NOT consumed
     @Test
     void generateScenarios_insufficientCredits_returns402AndCreditsNotConsumed() throws Exception {
-        String orgId = "org_insuf_" + UUID.randomUUID();
-
-        // Exhaust initial balance by reserving maximum
-        CreditModels.CreditBalance balance = creditRepository.getOrCreateBalance(orgId);
+        CreditModels.CreditBalance balance =
+            creditRepository.getOrCreateBalance(TestJwtHelper.DEMO_ORG_ID);
         long available = balance.availableCredits();
 
-        // Request more than available
         Map<String, Object> body = Map.of(
-            "organizationId", orgId,
             "projectId", "proj_insuf_test",
             "businessRuleId", "rule_insuf_001",
             "confirmedEstimatedCredits", (int) (available + 9999)
         );
 
         mockMvc.perform(post("/api/ai/test-design/scenarios")
+                .header("Authorization", TestJwtHelper.bearer(TestJwtHelper.validToken()))
+                .header("X-Organization-Id", TestJwtHelper.DEMO_ORG_ID)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(body)))
             .andExpect(status().isPaymentRequired())
             .andExpect(jsonPath("$.code").value("INSUFFICIENT_CREDITS"));
 
-        // Verify balance is unchanged
-        CreditModels.CreditBalance afterBalance = creditRepository.getOrCreateBalance(orgId);
+        CreditModels.CreditBalance afterBalance =
+            creditRepository.getOrCreateBalance(TestJwtHelper.DEMO_ORG_ID);
         assertThat(afterBalance.availableCredits()).isEqualTo(available);
     }
 
     @Test
     void generateScenarios_providerFailure_returns502AndReleasesCredits() throws Exception {
         String orgId = "org_provider_" + UUID.randomUUID();
+        // Use a token scoped to a unique org for isolation
+        String token = TestJwtHelper.validToken("user_test", java.util.List.of(orgId));
         long before = creditRepository.getOrCreateBalance(orgId).availableCredits();
 
         Map<String, Object> body = Map.of(
-            "organizationId", orgId,
             "projectId", "proj_provider_test",
             "businessRuleId", "rule_provider_001",
             "confirmedEstimatedCredits", 30,
@@ -132,6 +124,8 @@ class AiRunFailureIntegrationTest {
         );
 
         mockMvc.perform(post("/api/ai/test-design/scenarios")
+                .header("Authorization", TestJwtHelper.bearer(token))
+                .header("X-Organization-Id", orgId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(body)))
             .andExpect(status().isBadGateway())
@@ -144,10 +138,10 @@ class AiRunFailureIntegrationTest {
     @Test
     void generateScenarios_invalidProviderOutput_returns502AndReleasesCredits() throws Exception {
         String orgId = "org_output_" + UUID.randomUUID();
+        String token = TestJwtHelper.validToken("user_test", java.util.List.of(orgId));
         long before = creditRepository.getOrCreateBalance(orgId).availableCredits();
 
         Map<String, Object> body = Map.of(
-            "organizationId", orgId,
             "projectId", "proj_output_test",
             "businessRuleId", "rule_output_001",
             "confirmedEstimatedCredits", 30,
@@ -155,6 +149,8 @@ class AiRunFailureIntegrationTest {
         );
 
         mockMvc.perform(post("/api/ai/test-design/scenarios")
+                .header("Authorization", TestJwtHelper.bearer(token))
+                .header("X-Organization-Id", orgId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(body)))
             .andExpect(status().isBadGateway())

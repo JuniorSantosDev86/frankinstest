@@ -1,6 +1,7 @@
 package com.frankintest.api.checkup;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.frankintest.api.TestJwtHelper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -21,7 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-class CheckupAuditEventTest {
+class CheckupAuditEventTest extends com.frankintest.api.BaseIntegrationTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
@@ -42,6 +43,8 @@ class CheckupAuditEventTest {
     @Test
     void run_success_recordsCheckUpRequestedAuditEvent() throws Exception {
         MvcResult result = mockMvc.perform(post("/api/checkup/run")
+                .header("Authorization", TestJwtHelper.bearer(TestJwtHelper.validToken()))
+                .header("X-Organization-Id", TestJwtHelper.DEMO_ORG_ID)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(quickBody())))
             .andExpect(status().isAccepted())
@@ -58,7 +61,6 @@ class CheckupAuditEventTest {
         assertThat(events).contains("CHECK_UP_REQUESTED");
         assertThat(events).contains("CHECK_UP_CREDITS_RESERVED");
         assertThat(events).contains("CHECK_UP_RUNNING");
-        // COMPLETED or FAILED depending on mock output
         assertThat(events).anyMatch(e -> e.equals("CHECK_UP_COMPLETED") || e.equals("CHECK_UP_FAILED"));
     }
 
@@ -73,6 +75,8 @@ class CheckupAuditEventTest {
         );
 
         mockMvc.perform(post("/api/checkup/run")
+                .header("Authorization", TestJwtHelper.bearer(TestJwtHelper.validToken()))
+                .header("X-Organization-Id", TestJwtHelper.DEMO_ORG_ID)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(body)))
             .andExpect(status().isUnprocessableEntity());

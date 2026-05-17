@@ -17,3 +17,13 @@ ai:
     max-tokens: 1024
     base-url: https://api.anthropic.com
     version: 2023-06-01
+
+jwt:
+  secret: test-secret-for-unit-tests-must-be-32-chars-ok!!
+  demo-ttl-seconds: 86400
+
+demo-auth:
+  enabled: false
+
+cors:
+  allowed-origins: http://localhost:3000

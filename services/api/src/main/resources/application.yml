@@ -21,6 +21,16 @@ app:
   name: FrankInTest API
   version: 0.1.0
 
+jwt:
+  secret: ${JWT_SECRET:dev-secret-change-in-production-must-be-at-least-32-chars!!}
+  demo-ttl-seconds: ${JWT_DEMO_TTL:86400}
+
+demo-auth:
+  enabled: ${DEMO_AUTH_ENABLED:false}
+
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+
 ai:
   anthropic:
     api-key: ${ANTHROPIC_API_KEY:}

@@ -1,13 +1,27 @@
 package com.frankintest.api.system;
 
+import com.frankintest.api.system.security.AuthenticatedPrincipal;
 import org.springframework.stereotype.Service;
 
-/**
- * Foundation for org/project access validation.
- * Full auth enforcement is deferred; methods are shaped for future production auth.
- */
 @Service
 public class WorkspaceAccessService {
+
+    /**
+     * Validates that the declared organizationId belongs to the authenticated principal.
+     * Validation uses the JWT organizationIds claim — the static demo mapping is only
+     * used at demo token generation time, not here.
+     *
+     * @throws MissingOrgHeaderException if organizationId is blank
+     * @throws AccessDeniedException     if organizationId is not in the principal's allowed orgs
+     */
+    public void requireOrgAccess(AuthenticatedPrincipal principal, String organizationId) {
+        if (organizationId == null || organizationId.isBlank()) {
+            throw new MissingOrgHeaderException("X-Organization-Id é obrigatório.");
+        }
+        if (!principal.organizationIds().contains(organizationId)) {
+            throw new AccessDeniedException("Acesso negado a este recurso.");
+        }
+    }
 
     public void requireProjectAccess(String organizationId, String projectId, String userId) {
         if (organizationId == null || organizationId.isBlank()) {
@@ -19,7 +33,12 @@ public class WorkspaceAccessService {
         if (userId == null || userId.isBlank()) {
             throw new AccessDeniedException("userId é obrigatório");
         }
-        // TODO: validate org membership and project access from DB when auth is complete
+    }
+
+    public static class MissingOrgHeaderException extends RuntimeException {
+        public MissingOrgHeaderException(String message) {
+            super(message);
+        }
     }
 
     public static class AccessDeniedException extends RuntimeException {

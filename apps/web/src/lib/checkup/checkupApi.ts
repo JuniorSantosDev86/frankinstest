@@ -4,16 +4,28 @@ import type {
   CheckupRunResponse,
   CheckupRunStatusResponse,
 } from './checkupTypes'
+import { getDevToken } from '@/lib/auth/getDevToken'
+import { getMockSession } from '@/lib/auth/mockSession'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? ''
 const BASE = `${API_BASE}/api/checkup`
+
+function buildAuthHeaders(): Record<string, string> {
+  const token = getDevToken()
+  const orgId = getMockSession().activeOrganization.id
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    'X-Organization-Id': orgId,
+  }
+}
 
 export async function estimateCheckup(
   request: CheckupRequest
 ): Promise<CheckupEstimateResponse> {
   const res = await fetch(`${BASE}/estimate`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: buildAuthHeaders(),
     body: JSON.stringify(request),
   })
   if (!res.ok) {
@@ -28,7 +40,7 @@ export async function runCheckup(
 ): Promise<CheckupRunResponse> {
   const res = await fetch(`${BASE}/run`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: buildAuthHeaders(),
     body: JSON.stringify(request),
   })
   if (!res.ok) {
@@ -41,7 +53,9 @@ export async function runCheckup(
 export async function getCheckupRun(
   aiRunId: string
 ): Promise<CheckupRunStatusResponse> {
-  const res = await fetch(`${BASE}/runs/${encodeURIComponent(aiRunId)}`)
+  const res = await fetch(`${BASE}/runs/${encodeURIComponent(aiRunId)}`, {
+    headers: buildAuthHeaders(),
+  })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new ApiError(res.status, err.message ?? 'Erro ao consultar o Check-up.')
@@ -65,5 +79,9 @@ export class ApiError extends Error {
 
   get isInsufficientCredits() {
     return this.status === 402
+  }
+
+  get isUnauthorized() {
+    return this.status === 401
   }
 }

@@ -1,6 +1,7 @@
 package com.frankintest.api.checkup;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.frankintest.api.TestJwtHelper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -19,11 +20,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 class CheckupEstimateControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
-
-    @Autowired
-    private ObjectMapper objectMapper;
+    @Autowired private MockMvc mockMvc;
+    @Autowired private ObjectMapper objectMapper;
 
     private Map<String, Object> validBody() {
         return Map.of(
@@ -40,6 +38,8 @@ class CheckupEstimateControllerTest {
     @Test
     void estimate_validRequest_returns200WithCreditsAndBreakdown() throws Exception {
         mockMvc.perform(post("/api/checkup/estimate")
+                .header("Authorization", TestJwtHelper.bearer(TestJwtHelper.validToken()))
+                .header("X-Organization-Id", TestJwtHelper.DEMO_ORG_ID)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(validBody())))
             .andExpect(status().isOk())
@@ -55,6 +55,8 @@ class CheckupEstimateControllerTest {
         body.put("userAuthorizationConfirmed", false);
 
         mockMvc.perform(post("/api/checkup/estimate")
+                .header("Authorization", TestJwtHelper.bearer(TestJwtHelper.validToken()))
+                .header("X-Organization-Id", TestJwtHelper.DEMO_ORG_ID)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(body)))
             .andExpect(status().isUnprocessableEntity())
@@ -67,6 +69,8 @@ class CheckupEstimateControllerTest {
         body.put("context", "Curto");
 
         mockMvc.perform(post("/api/checkup/estimate")
+                .header("Authorization", TestJwtHelper.bearer(TestJwtHelper.validToken()))
+                .header("X-Organization-Id", TestJwtHelper.DEMO_ORG_ID)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(body)))
             .andExpect(status().isBadRequest())
@@ -80,6 +84,8 @@ class CheckupEstimateControllerTest {
         body.remove("goal");
 
         mockMvc.perform(post("/api/checkup/estimate")
+                .header("Authorization", TestJwtHelper.bearer(TestJwtHelper.validToken()))
+                .header("X-Organization-Id", TestJwtHelper.DEMO_ORG_ID)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(body)))
             .andExpect(status().isBadRequest());

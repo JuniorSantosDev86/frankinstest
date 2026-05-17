@@ -6,8 +6,10 @@ import com.frankintest.api.ai.orchestration.AiTestDesignOrchestrationService;
 import com.frankintest.api.credits.CreditModels;
 import com.frankintest.api.system.ApiErrorResponse;
 import com.frankintest.api.system.WorkspaceAccessService;
+import com.frankintest.api.system.security.AuthenticatedPrincipal;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -15,16 +17,28 @@ import org.springframework.web.bind.annotation.*;
 public class AiTestDesignController {
 
     private final AiTestDesignOrchestrationService orchestrationService;
+    private final WorkspaceAccessService workspaceAccessService;
 
-    public AiTestDesignController(AiTestDesignOrchestrationService orchestrationService) {
+    public AiTestDesignController(AiTestDesignOrchestrationService orchestrationService,
+                                   WorkspaceAccessService workspaceAccessService) {
         this.orchestrationService = orchestrationService;
+        this.workspaceAccessService = workspaceAccessService;
     }
 
     @PostMapping("/estimate")
-    public ResponseEntity<?> estimate(@RequestBody EstimateRequestBody body) {
-        if (body.organizationId() == null || body.organizationId().isBlank()) {
-            return badRequest("INVALID_INPUT", "organizationId é obrigatório");
+    public ResponseEntity<?> estimate(
+            @RequestBody EstimateRequestBody body,
+            @AuthenticationPrincipal AuthenticatedPrincipal principal,
+            @RequestHeader(value = "X-Organization-Id", required = false) String organizationId) {
+
+        try {
+            workspaceAccessService.requireOrgAccess(principal, organizationId);
+        } catch (WorkspaceAccessService.MissingOrgHeaderException e) {
+            return badRequest("VALIDATION_ERROR", e.getMessage());
+        } catch (WorkspaceAccessService.AccessDeniedException e) {
+            return forbidden(e.getMessage());
         }
+
         if (body.projectId() == null || body.projectId().isBlank()) {
             return badRequest("INVALID_INPUT", "projectId é obrigatório");
         }
@@ -40,8 +54,8 @@ public class AiTestDesignController {
 
         try {
             AiTestDesignDtos.EstimateRequest req = new AiTestDesignDtos.EstimateRequest(
-                body.organizationId(), body.projectId(),
-                resolveUserId(body.userId()),
+                organizationId, body.projectId(),
+                principal.userId(),
                 body.generationType(), body.sourceArtifactId(), body.context()
             );
             return ResponseEntity.ok(orchestrationService.estimate(req));
@@ -51,10 +65,19 @@ public class AiTestDesignController {
     }
 
     @PostMapping("/scenarios")
-    public ResponseEntity<?> generateScenarios(@RequestBody GenerateScenariosRequestBody body) {
-        if (body.organizationId() == null || body.organizationId().isBlank()) {
-            return badRequest("INVALID_INPUT", "organizationId é obrigatório");
+    public ResponseEntity<?> generateScenarios(
+            @RequestBody GenerateScenariosRequestBody body,
+            @AuthenticationPrincipal AuthenticatedPrincipal principal,
+            @RequestHeader(value = "X-Organization-Id", required = false) String organizationId) {
+
+        try {
+            workspaceAccessService.requireOrgAccess(principal, organizationId);
+        } catch (WorkspaceAccessService.MissingOrgHeaderException e) {
+            return badRequest("VALIDATION_ERROR", e.getMessage());
+        } catch (WorkspaceAccessService.AccessDeniedException e) {
+            return forbidden(e.getMessage());
         }
+
         if (body.projectId() == null || body.projectId().isBlank()) {
             return badRequest("INVALID_INPUT", "projectId é obrigatório");
         }
@@ -67,7 +90,7 @@ public class AiTestDesignController {
 
         try {
             AiTestDesignDtos.GenerateScenariosRequest req = new AiTestDesignDtos.GenerateScenariosRequest(
-                body.organizationId(), body.projectId(), resolveUserId(body.userId()),
+                organizationId, body.projectId(), principal.userId(),
                 body.businessRuleId(), body.confirmedEstimatedCredits(), body.context()
             );
             AiTestDesignDtos.AiGenerationResult result = orchestrationService.generateScenarios(req);
@@ -89,10 +112,19 @@ public class AiTestDesignController {
     }
 
     @PostMapping("/test-cases")
-    public ResponseEntity<?> generateTestCases(@RequestBody GenerateTestCasesRequestBody body) {
-        if (body.organizationId() == null || body.organizationId().isBlank()) {
-            return badRequest("INVALID_INPUT", "organizationId é obrigatório");
+    public ResponseEntity<?> generateTestCases(
+            @RequestBody GenerateTestCasesRequestBody body,
+            @AuthenticationPrincipal AuthenticatedPrincipal principal,
+            @RequestHeader(value = "X-Organization-Id", required = false) String organizationId) {
+
+        try {
+            workspaceAccessService.requireOrgAccess(principal, organizationId);
+        } catch (WorkspaceAccessService.MissingOrgHeaderException e) {
+            return badRequest("VALIDATION_ERROR", e.getMessage());
+        } catch (WorkspaceAccessService.AccessDeniedException e) {
+            return forbidden(e.getMessage());
         }
+
         if (body.projectId() == null || body.projectId().isBlank()) {
             return badRequest("INVALID_INPUT", "projectId é obrigatório");
         }
@@ -105,7 +137,7 @@ public class AiTestDesignController {
 
         try {
             AiTestDesignDtos.GenerateTestCasesRequest req = new AiTestDesignDtos.GenerateTestCasesRequest(
-                body.organizationId(), body.projectId(), resolveUserId(body.userId()),
+                organizationId, body.projectId(), principal.userId(),
                 body.scenarioId(), body.confirmedEstimatedCredits(), body.context()
             );
             AiTestDesignDtos.AiGenerationResult result = orchestrationService.generateTestCases(req);
@@ -126,10 +158,6 @@ public class AiTestDesignController {
         }
     }
 
-    private String resolveUserId(String userId) {
-        return (userId != null && !userId.isBlank()) ? userId : "user_default";
-    }
-
     private boolean isSupportedGenerationType(String generationType) {
         return "scenarios_from_business_rule".equals(generationType)
             || "test_cases_from_scenario".equals(generationType);
@@ -141,33 +169,27 @@ public class AiTestDesignController {
 
     private ResponseEntity<ApiErrorResponse> forbidden(String message) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
-            .body(ApiErrorResponse.of("ACCESS_DENIED", message));
+            .body(ApiErrorResponse.of("FORBIDDEN", message));
     }
 
-    // ---- Request body records ----
+    // ---- Request body records (organizationId and userId removed — resolved from JWT) ----
 
     record EstimateRequestBody(
-        String organizationId,
         String projectId,
-        String userId,
         String generationType,
         String sourceArtifactId,
         String context
     ) {}
 
     record GenerateScenariosRequestBody(
-        String organizationId,
         String projectId,
-        String userId,
         String businessRuleId,
         int confirmedEstimatedCredits,
         String context
     ) {}
 
     record GenerateTestCasesRequestBody(
-        String organizationId,
         String projectId,
-        String userId,
         String scenarioId,
         int confirmedEstimatedCredits,
         String context

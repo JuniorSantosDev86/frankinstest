@@ -299,7 +299,8 @@ export default function CheckupPage() {
           )}
         </div>
 
-        {/* Autorização */}
+        {/* Autorização e privacidade (LGPD) */}
+        {/* LGPD: Retention period and data subject request handling defined in docs/SECURITY_LGPD.md — implementation deferred to compliance block */}
         <div className="bg-amber-50 border border-amber-200 rounded-md p-3">
           <label className="flex items-start gap-2 cursor-pointer">
             <input
@@ -309,7 +310,7 @@ export default function CheckupPage() {
               className="mt-0.5"
             />
             <span className="text-sm text-amber-800">
-              Confirmo que estou autorizado a submeter este alvo para análise assistida por IA e que as informações fornecidas não contêm dados sensíveis de terceiros sem consentimento.
+              Confirmo que tenho autorização para analisar este produto/URL e que não estou submetendo dados sensíveis desnecessários. As informações fornecidas não contêm dados pessoais de terceiros sem consentimento.
             </span>
           </label>
         </div>

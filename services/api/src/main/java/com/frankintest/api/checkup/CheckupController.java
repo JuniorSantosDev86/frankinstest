@@ -1,7 +1,10 @@
 package com.frankintest.api.checkup;
 
+import com.frankintest.api.system.WorkspaceAccessService;
+import com.frankintest.api.system.security.AuthenticatedPrincipal;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -11,13 +14,19 @@ import java.util.Map;
 public class CheckupController {
 
     private final CheckupService checkupService;
+    private final WorkspaceAccessService workspaceAccessService;
 
-    public CheckupController(CheckupService checkupService) {
+    public CheckupController(CheckupService checkupService, WorkspaceAccessService workspaceAccessService) {
         this.checkupService = checkupService;
+        this.workspaceAccessService = workspaceAccessService;
     }
 
     @PostMapping("/estimate")
-    public ResponseEntity<?> estimate(@RequestBody CheckupModels.CheckupRequest request) {
+    public ResponseEntity<?> estimate(
+            @RequestBody CheckupModels.CheckupRequest request,
+            @AuthenticationPrincipal AuthenticatedPrincipal principal,
+            @RequestHeader(value = "X-Organization-Id", required = false) String organizationId) {
+
         if (request == null || request.goal() == null || request.context() == null
                 || request.targetType() == null || request.depth() == null || request.outputMode() == null) {
             return ResponseEntity.badRequest().body(Map.of(
@@ -26,7 +35,19 @@ public class CheckupController {
             ));
         }
         try {
+            workspaceAccessService.requireOrgAccess(principal, organizationId);
             return ResponseEntity.ok(checkupService.estimate(request));
+        } catch (WorkspaceAccessService.MissingOrgHeaderException e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", "VALIDATION_ERROR",
+                "message", e.getMessage(),
+                "field", "X-Organization-Id"
+            ));
+        } catch (WorkspaceAccessService.AccessDeniedException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                "error", "FORBIDDEN",
+                "message", e.getMessage()
+            ));
         } catch (CheckupModels.AuthorizationNotConfirmedException e) {
             return ResponseEntity.unprocessableEntity().body(Map.of(
                 "error", "AUTHORIZATION_REQUIRED",
@@ -42,7 +63,11 @@ public class CheckupController {
     }
 
     @PostMapping("/run")
-    public ResponseEntity<?> run(@RequestBody CheckupModels.CheckupRequest request) {
+    public ResponseEntity<?> run(
+            @RequestBody CheckupModels.CheckupRequest request,
+            @AuthenticationPrincipal AuthenticatedPrincipal principal,
+            @RequestHeader(value = "X-Organization-Id", required = false) String organizationId) {
+
         if (request == null || request.goal() == null || request.context() == null
                 || request.targetType() == null || request.depth() == null || request.outputMode() == null) {
             return ResponseEntity.badRequest().body(Map.of(
@@ -50,11 +75,22 @@ public class CheckupController {
                 "message", "Campos obrigatórios ausentes."
             ));
         }
-        String organizationId = "org_mock";
-        String userId = "user_mock";
         try {
-            CheckupModels.CheckupRunResponse response = checkupService.run(request, organizationId, userId);
+            workspaceAccessService.requireOrgAccess(principal, organizationId);
+            CheckupModels.CheckupRunResponse response =
+                checkupService.run(request, organizationId, principal.userId());
             return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+        } catch (WorkspaceAccessService.MissingOrgHeaderException e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", "VALIDATION_ERROR",
+                "message", e.getMessage(),
+                "field", "X-Organization-Id"
+            ));
+        } catch (WorkspaceAccessService.AccessDeniedException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                "error", "FORBIDDEN",
+                "message", e.getMessage()
+            ));
         } catch (CheckupModels.AuthorizationNotConfirmedException e) {
             return ResponseEntity.unprocessableEntity().body(Map.of(
                 "error", "AUTHORIZATION_REQUIRED",
@@ -82,10 +118,24 @@ public class CheckupController {
     }
 
     @GetMapping("/runs/{aiRunId}")
-    public ResponseEntity<?> getRunStatus(@PathVariable String aiRunId) {
-        String organizationId = "org_mock";
+    public ResponseEntity<?> getRunStatus(
+            @PathVariable String aiRunId,
+            @AuthenticationPrincipal AuthenticatedPrincipal principal,
+            @RequestHeader(value = "X-Organization-Id", required = false) String organizationId) {
         try {
+            workspaceAccessService.requireOrgAccess(principal, organizationId);
             return ResponseEntity.ok(checkupService.getRunStatus(aiRunId, organizationId));
+        } catch (WorkspaceAccessService.MissingOrgHeaderException e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", "VALIDATION_ERROR",
+                "message", e.getMessage(),
+                "field", "X-Organization-Id"
+            ));
+        } catch (WorkspaceAccessService.AccessDeniedException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                "error", "FORBIDDEN",
+                "message", e.getMessage()
+            ));
         } catch (CheckupService.CheckupNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
                 "error", "NOT_FOUND",
