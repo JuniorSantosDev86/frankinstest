@@ -7,7 +7,8 @@ public class AiRunModels {
 
     public enum AiRunFeature {
         test_scenario_generation,
-        test_case_generation
+        test_case_generation,
+        checkup
     }
 
     public enum AiRunStatus {
@@ -23,7 +24,7 @@ public class AiRunModels {
     }
 
     public enum OutputArtifactType {
-        test_scenario, test_case
+        test_scenario, test_case, checkup_report
     }
 
     public record AiRun(
@@ -42,6 +43,7 @@ public class AiRunModels {
         AiRunFailureCategory failureCategory,
         OutputArtifactType outputArtifactType,
         List<String> outputArtifactIds,
+        String rawOutput,
         Instant createdAt,
         Instant startedAt,
         Instant completedAt

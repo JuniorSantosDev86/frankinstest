@@ -179,3 +179,9 @@ Ao final de cada bloco, reportar:
 6. Limitações conhecidas.
 7. Atualizações de roadmap/status atual.
 8. Mensagem de commit sugerida.
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+at `specs/004-checkup-mvp/plan.md`.
+<!-- SPECKIT END -->

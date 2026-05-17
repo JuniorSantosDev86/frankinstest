@@ -29,7 +29,7 @@ class AiRunLifecycleTest {
             AiRunModels.SourceArtifactType.business_rule, "rule_lc_001",
             "test input summary", 30L, 0L, 0L,
             AiRunModels.AiRunStatus.estimated, AiRunModels.AiRunFailureCategory.none,
-            null, List.of(), Instant.now(), null, null
+            null, List.of(), null, Instant.now(), null, null
         );
     }
 

@@ -14,10 +14,13 @@ CREATE TABLE IF NOT EXISTS ai_runs (
     failure_category VARCHAR(50) NOT NULL DEFAULT 'none',
     output_artifact_type VARCHAR(50),
     output_artifact_ids TEXT,
+    raw_output TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     started_at TIMESTAMP,
     completed_at TIMESTAMP
 );
+
+ALTER TABLE ai_runs ADD COLUMN IF NOT EXISTS raw_output TEXT;
 
 CREATE TABLE IF NOT EXISTS credit_transactions (
     id VARCHAR(120) PRIMARY KEY,
@@ -81,6 +84,32 @@ CREATE TABLE IF NOT EXISTS test_cases (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS checkup_reports (
+    id VARCHAR(120) PRIMARY KEY,
+    ai_run_id VARCHAR(120) NOT NULL,
+    organization_id VARCHAR(120) NOT NULL,
+    user_id VARCHAR(120) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
+    target_type VARCHAR(50) NOT NULL,
+    target_value TEXT NOT NULL,
+    context TEXT NOT NULL,
+    goal TEXT NOT NULL,
+    depth VARCHAR(20) NOT NULL,
+    quality_risks TEXT NOT NULL DEFAULT '[]',
+    missing_or_unclear_requirements TEXT NOT NULL DEFAULT '[]',
+    suggested_test_scenarios TEXT NOT NULL DEFAULT '[]',
+    suggested_test_cases TEXT NOT NULL DEFAULT '[]',
+    ux_product_risks TEXT NOT NULL DEFAULT '[]',
+    release_readiness_notes TEXT NOT NULL DEFAULT '[]',
+    recommended_next_actions TEXT NOT NULL DEFAULT '[]',
+    raw_ai_output TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_checkup_reports_org ON checkup_reports(organization_id);
+CREATE INDEX IF NOT EXISTS idx_checkup_reports_ai_run ON checkup_reports(ai_run_id);
 
 CREATE TABLE IF NOT EXISTS audit_log (
     id VARCHAR(120) PRIMARY KEY,

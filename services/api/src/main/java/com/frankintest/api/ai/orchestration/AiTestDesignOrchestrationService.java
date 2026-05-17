@@ -95,7 +95,7 @@ public class AiTestDesignOrchestrationService {
             AiRunModels.SourceArtifactType.business_rule, req.businessRuleId(),
             inputSummary, req.confirmedEstimatedCredits(), 0L, 0L,
             AiRunModels.AiRunStatus.estimated, AiRunModels.AiRunFailureCategory.none,
-            null, List.of(), Instant.now(), null, null
+            null, List.of(), null, Instant.now(), null, null
         );
         aiRunRepository.insert(run);
 
@@ -182,7 +182,7 @@ public class AiTestDesignOrchestrationService {
             AiRunModels.SourceArtifactType.test_scenario, req.scenarioId(),
             inputSummary, req.confirmedEstimatedCredits(), 0L, 0L,
             AiRunModels.AiRunStatus.estimated, AiRunModels.AiRunFailureCategory.none,
-            null, List.of(), Instant.now(), null, null
+            null, List.of(), null, Instant.now(), null, null
         );
         aiRunRepository.insert(run);
 

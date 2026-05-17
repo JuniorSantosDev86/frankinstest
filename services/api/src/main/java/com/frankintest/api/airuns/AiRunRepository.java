@@ -27,8 +27,8 @@ public class AiRunRepository {
                 source_artifact_type, source_artifact_id, input_summary,
                 estimated_credits, reserved_credits, consumed_credits,
                 status, failure_category, output_artifact_type, output_artifact_ids,
-                created_at, started_at, completed_at
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                raw_output, created_at, started_at, completed_at
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """,
             run.id(), run.organizationId(), run.projectId(), run.userId(),
             run.feature().name(),
@@ -39,6 +39,7 @@ public class AiRunRepository {
             run.failureCategory() != null ? run.failureCategory().name() : AiRunModels.AiRunFailureCategory.none.name(),
             run.outputArtifactType() != null ? run.outputArtifactType().name() : null,
             run.outputArtifactIds() != null ? String.join(",", run.outputArtifactIds()) : null,
+            run.rawOutput(),
             toTimestamp(run.createdAt()), toTimestamp(run.startedAt()), toTimestamp(run.completedAt())
         );
     }
@@ -101,6 +102,7 @@ public class AiRunRepository {
             parseEnum(AiRunModels.AiRunFailureCategory.class, rs.getString("failure_category")),
             parseEnum(AiRunModels.OutputArtifactType.class, rs.getString("output_artifact_type")),
             outputIds,
+            rs.getString("raw_output"),
             toInstant(rs.getTimestamp("created_at")),
             toInstant(rs.getTimestamp("started_at")),
             toInstant(rs.getTimestamp("completed_at"))
