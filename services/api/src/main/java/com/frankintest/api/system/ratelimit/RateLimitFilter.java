@@ -72,7 +72,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
         String path = request.getRequestURI();
-        return !path.startsWith("/api/checkup/run") && !path.startsWith("/api/ai/");
+        return !path.startsWith("/api/checkup/run")
+            && !path.startsWith("/api/ai/")
+            && !path.startsWith("/api/workspace/");
     }
 
     private String resolveUserId() {

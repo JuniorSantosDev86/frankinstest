@@ -47,7 +47,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/health", "/actuator/health", "/actuator/**").permitAll()
-                .requestMatchers("/api/checkup/**", "/api/ai/**").authenticated()
+                .requestMatchers("/api/checkup/**", "/api/ai/**", "/api/workspace/**").authenticated()
                 .anyRequest().permitAll()
             )
             .addFilterBefore(jwtAuthFilter(), UsernamePasswordAuthenticationFilter.class)

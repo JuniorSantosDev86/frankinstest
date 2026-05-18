@@ -153,6 +153,9 @@ CREATE INDEX IF NOT EXISTS idx_workspace_artifacts_source
 CREATE INDEX IF NOT EXISTS idx_workspace_artifacts_type
     ON workspace_artifacts(artifact_type);
 
+CREATE INDEX IF NOT EXISTS idx_workspace_artifacts_org_status_type
+    ON workspace_artifacts(organization_id, status, artifact_type);
+
 CREATE TABLE IF NOT EXISTS audit_log (
     id VARCHAR(120) PRIMARY KEY,
     organization_id VARCHAR(120) NOT NULL,

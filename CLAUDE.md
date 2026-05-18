@@ -183,5 +183,5 @@ Ao final de cada bloco, reportar:
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at `specs/007-checkup-to-workspace-artifacts/plan.md`.
+at `specs/009-workspace-artifacts-review-editing/plan.md`.
 <!-- SPECKIT END -->
