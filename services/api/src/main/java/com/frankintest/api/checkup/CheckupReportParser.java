@@ -29,7 +29,12 @@ public class CheckupReportParser {
         try {
             root = mapper.readTree(rawOutput);
         } catch (Exception e) {
-            root = mapper.createObjectNode();
+            throw new CheckupService.CheckupExecutionException(
+                "A saída do provedor de IA está em formato inválido. Seus créditos foram preservados.", aiRunId);
+        }
+        if (root == null || root.isNull() || root.isMissingNode()) {
+            throw new CheckupService.CheckupExecutionException(
+                "A saída do provedor de IA está em formato inválido. Seus créditos foram preservados.", aiRunId);
         }
 
         Instant now = Instant.now();

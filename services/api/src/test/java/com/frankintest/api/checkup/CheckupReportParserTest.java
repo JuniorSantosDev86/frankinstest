@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class CheckupReportParserTest {
 
@@ -70,15 +71,10 @@ class CheckupReportParserTest {
     }
 
     @Test
-    void parse_totallyInvalidJson_allSectionsEmptyRawPreserved() {
-        String raw = "NOT JSON AT ALL";
-
-        var report = parser.parse("r3", "run3", "org1", "u1", validRequest(), raw);
-
-        assertThat(report.qualityRisks()).isEmpty();
-        assertThat(report.suggestedTestScenarios()).isEmpty();
-        assertThat(report.recommendedNextActions()).isEmpty();
-        assertThat(report.rawAiOutput()).isEqualTo(raw);
-        assertThat(report.status()).isEqualTo(CheckupModels.ReportStatus.DRAFT);
+    void parse_totallyInvalidJson_throwsCheckupExecutionException() {
+        // T009: parser no longer silently swallows parse errors — it throws so CheckupService can handle
+        assertThatThrownBy(() ->
+            parser.parse("r3", "run3", "org1", "u1", validRequest(), "NOT JSON AT ALL"))
+            .isInstanceOf(CheckupService.CheckupExecutionException.class);
     }
 }

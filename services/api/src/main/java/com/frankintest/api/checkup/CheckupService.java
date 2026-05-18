@@ -1,5 +1,7 @@
 package com.frankintest.api.checkup;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.frankintest.api.ai.provider.AiProviderPort;
 import com.frankintest.api.ai.provider.AiProviderSelector;
 import com.frankintest.api.airuns.AiRunModels;
@@ -20,30 +22,36 @@ public class CheckupService {
     private final CheckupCreditEstimator creditEstimator;
     private final CheckupPromptBuilder promptBuilder;
     private final CheckupReportParser reportParser;
+    private final CheckupOutputValidator outputValidator;
     private final CheckupRepository checkupRepository;
     private final AiRunRepository aiRunRepository;
     private final CreditService creditService;
     private final AuditService auditService;
     private final AiProviderSelector aiProviderSelector;
+    private final ObjectMapper objectMapper;
 
     public CheckupService(
         CheckupCreditEstimator creditEstimator,
         CheckupPromptBuilder promptBuilder,
         CheckupReportParser reportParser,
+        CheckupOutputValidator outputValidator,
         CheckupRepository checkupRepository,
         AiRunRepository aiRunRepository,
         CreditService creditService,
         AuditService auditService,
-        AiProviderSelector aiProviderSelector
+        AiProviderSelector aiProviderSelector,
+        ObjectMapper objectMapper
     ) {
         this.creditEstimator = creditEstimator;
         this.promptBuilder = promptBuilder;
         this.reportParser = reportParser;
+        this.outputValidator = outputValidator;
         this.checkupRepository = checkupRepository;
         this.aiRunRepository = aiRunRepository;
         this.creditService = creditService;
         this.auditService = auditService;
         this.aiProviderSelector = aiProviderSelector;
+        this.objectMapper = objectMapper;
     }
 
     public CheckupModels.CheckupEstimateResponse estimate(CheckupModels.CheckupRequest request) {
@@ -100,18 +108,50 @@ public class CheckupService {
         aiRunRepository.updateToRunning(aiRunId, Instant.now());
         audit(organizationId, userId, "CHECK_UP_RUNNING", "ai_run", aiRunId);
 
+        audit(organizationId, userId, "CHECK_UP_PROVIDER_CALL_STARTED", "ai_run", aiRunId);
         AiProviderPort.AiProviderResponse response = aiProviderSelector.getProvider().generate(promptBuilder.build(request));
 
         if (!response.success()) {
             creditService.release(organizationId, userId, aiRunId, estimatedCredits,
-                "Falha no provider: " + response.errorMessage());
+                "Falha no provider");
             aiRunRepository.updateStatus(aiRunId,
                 AiRunModels.AiRunStatus.failed,
                 AiRunModels.AiRunFailureCategory.provider,
                 0L, List.of(reportId), Instant.now());
+            audit(organizationId, userId, "CHECK_UP_PROVIDER_CALL_FAILED", "ai_run", aiRunId);
             audit(organizationId, userId, "CHECK_UP_FAILED", "ai_run", aiRunId);
             audit(organizationId, userId, "CHECK_UP_CREDITS_RELEASED", "ai_run", aiRunId);
-            throw new CheckupExecutionException("Não foi possível concluir a análise. Seus créditos foram preservados.");
+            throw new CheckupExecutionException("Não foi possível concluir a análise. Seus créditos foram preservados.", aiRunId);
+        }
+
+        audit(organizationId, userId, "CHECK_UP_PROVIDER_CALL_COMPLETED", "ai_run", aiRunId);
+
+        JsonNode parsedRoot;
+        try {
+            parsedRoot = objectMapper.readTree(response.content());
+        } catch (Exception e) {
+            creditService.release(organizationId, userId, aiRunId, estimatedCredits,
+                "Saída do provedor não é JSON válido");
+            aiRunRepository.updateStatus(aiRunId,
+                AiRunModels.AiRunStatus.failed,
+                AiRunModels.AiRunFailureCategory.output_validation,
+                0L, List.of(reportId), Instant.now());
+            audit(organizationId, userId, "CHECK_UP_OUTPUT_VALIDATION_FAILED", "ai_run", aiRunId);
+            audit(organizationId, userId, "CHECK_UP_FAILED", "ai_run", aiRunId);
+            throw new CheckupExecutionException("A saída do provedor de IA está em formato inválido. Seus créditos foram preservados.", aiRunId);
+        }
+
+        CheckupOutputValidator.ValidationResult validation = outputValidator.validate(parsedRoot);
+        if (!validation.valid()) {
+            creditService.release(organizationId, userId, aiRunId, estimatedCredits,
+                "Falha na validação da saída do provedor");
+            aiRunRepository.updateStatus(aiRunId,
+                AiRunModels.AiRunStatus.failed,
+                AiRunModels.AiRunFailureCategory.output_validation,
+                0L, List.of(reportId), Instant.now());
+            audit(organizationId, userId, "CHECK_UP_OUTPUT_VALIDATION_FAILED", "ai_run", aiRunId);
+            audit(organizationId, userId, "CHECK_UP_FAILED", "ai_run", aiRunId);
+            throw new CheckupExecutionException("A saída do provedor de IA não passou na validação de estrutura. Seus créditos foram preservados.", aiRunId);
         }
 
         CheckupModels.CheckupReport report = reportParser.parse(
@@ -157,7 +197,8 @@ public class CheckupService {
             r.qualityRisks(), r.missingOrUnclearRequirements(),
             r.suggestedTestScenarios(), r.suggestedTestCases(),
             r.uxProductRisks(), r.releaseReadinessNotes(), r.recommendedNextActions(),
-            r.createdAt(), r.updatedAt());
+            r.createdAt(), r.updatedAt(),
+            true);
     }
 
     private long baseCredits(CheckupModels.CheckupDepth depth) {
@@ -191,7 +232,11 @@ public class CheckupService {
     }
 
     public static class CheckupExecutionException extends RuntimeException {
-        public CheckupExecutionException(String message) { super(message); }
+        public final String aiRunId;
+        public CheckupExecutionException(String message, String aiRunId) {
+            super(message);
+            this.aiRunId = aiRunId;
+        }
     }
 
     public static class CheckupNotFoundException extends RuntimeException {

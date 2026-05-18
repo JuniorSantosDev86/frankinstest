@@ -132,7 +132,8 @@ public class CheckupModels {
         List<FindingItem> releaseReadinessNotes,
         List<ActionItem> recommendedNextActions,
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+        boolean aiAssisted
     ) {}
 
     public static class AuthorizationNotConfirmedException extends RuntimeException {

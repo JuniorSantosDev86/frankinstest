@@ -112,7 +112,8 @@ public class CheckupController {
         } catch (CheckupService.CheckupExecutionException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
                 "error", "EXECUTION_FAILED",
-                "message", e.getMessage()
+                "message", e.getMessage(),
+                "aiRunId", e.aiRunId
             ));
         }
     }
