@@ -183,5 +183,5 @@ Ao final de cada bloco, reportar:
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at `specs/006-real-ai-provider-integration/plan.md`.
+at `specs/007-checkup-to-workspace-artifacts/plan.md`.
 <!-- SPECKIT END -->

@@ -111,6 +111,48 @@ CREATE TABLE IF NOT EXISTS checkup_reports (
 CREATE INDEX IF NOT EXISTS idx_checkup_reports_org ON checkup_reports(organization_id);
 CREATE INDEX IF NOT EXISTS idx_checkup_reports_ai_run ON checkup_reports(ai_run_id);
 
+-- Bloco 13: Traceability columns for conversion
+ALTER TABLE test_scenarios ADD COLUMN IF NOT EXISTS source_checkup_report_id VARCHAR(120);
+ALTER TABLE test_scenarios ADD COLUMN IF NOT EXISTS source_section VARCHAR(100);
+ALTER TABLE test_scenarios ADD COLUMN IF NOT EXISTS source_item_index INTEGER;
+
+CREATE INDEX IF NOT EXISTS idx_test_scenarios_source_checkup
+    ON test_scenarios(source_checkup_report_id, source_section, source_item_index);
+
+ALTER TABLE test_cases ADD COLUMN IF NOT EXISTS source_checkup_report_id VARCHAR(120);
+ALTER TABLE test_cases ADD COLUMN IF NOT EXISTS source_section VARCHAR(100);
+ALTER TABLE test_cases ADD COLUMN IF NOT EXISTS source_item_index INTEGER;
+
+CREATE INDEX IF NOT EXISTS idx_test_cases_source_checkup
+    ON test_cases(source_checkup_report_id, source_section, source_item_index);
+
+CREATE TABLE IF NOT EXISTS workspace_artifacts (
+    id                        VARCHAR(120) PRIMARY KEY,
+    organization_id           VARCHAR(120) NOT NULL,
+    project_id                VARCHAR(120),
+    artifact_type             VARCHAR(50)  NOT NULL,
+    title                     VARCHAR(500) NOT NULL,
+    description               TEXT,
+    status                    VARCHAR(50)  NOT NULL DEFAULT 'DRAFT',
+    ai_assisted               BOOLEAN      NOT NULL DEFAULT TRUE,
+    source_checkup_report_id  VARCHAR(120) NOT NULL,
+    source_section            VARCHAR(100) NOT NULL,
+    source_item_index         INTEGER      NOT NULL,
+    details                   TEXT,
+    created_by                VARCHAR(120) NOT NULL,
+    created_at                TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+    updated_at                TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_workspace_artifacts_org
+    ON workspace_artifacts(organization_id);
+
+CREATE INDEX IF NOT EXISTS idx_workspace_artifacts_source
+    ON workspace_artifacts(source_checkup_report_id, source_section, source_item_index);
+
+CREATE INDEX IF NOT EXISTS idx_workspace_artifacts_type
+    ON workspace_artifacts(artifact_type);
+
 CREATE TABLE IF NOT EXISTS audit_log (
     id VARCHAR(120) PRIMARY KEY,
     organization_id VARCHAR(120) NOT NULL,

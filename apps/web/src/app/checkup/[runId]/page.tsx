@@ -3,6 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useCheckupPolling } from "@/lib/checkup/useCheckupPolling";
 import type { FindingItem, ScenarioItem, TestCaseItem, ActionItem } from "@/lib/checkup/checkupTypes";
+import CheckupConversionPanel from "./CheckupConversionPanel";
 
 const SEVERITY_COLORS: Record<string, string> = {
   LOW: "bg-green-100 text-green-700",
@@ -191,15 +192,43 @@ export default function CheckupRunPage() {
       <FindingList title="Notas de release readiness" items={report.releaseReadinessNotes} />
       <ActionList items={report.recommendedNextActions} />
 
-      <div className="border-t border-gray-200 pt-4 mt-2">
-        <button
-          disabled
-          title="Em breve"
-          className="w-full border border-gray-300 text-gray-400 px-4 py-2 rounded-md text-sm cursor-not-allowed"
-        >
-          Salvar como artefato (em breve)
-        </button>
-      </div>
+      {status.status === "completed" && (
+        <CheckupConversionPanel
+          reportId={report.id}
+          sections={[
+            {
+              sectionKey: "missing_or_unclear_requirements",
+              label: "Requisitos ausentes/incompletos",
+              items: report.missingOrUnclearRequirements ?? [],
+            },
+            {
+              sectionKey: "suggested_test_scenarios",
+              label: "Cenários de teste sugeridos",
+              items: report.suggestedTestScenarios ?? [],
+            },
+            {
+              sectionKey: "suggested_test_cases",
+              label: "Casos de teste sugeridos",
+              items: report.suggestedTestCases ?? [],
+            },
+            {
+              sectionKey: "quality_risks",
+              label: "Riscos de qualidade",
+              items: report.qualityRisks ?? [],
+            },
+            {
+              sectionKey: "ux_product_risks",
+              label: "Riscos de UX/produto",
+              items: report.uxProductRisks ?? [],
+            },
+            {
+              sectionKey: "release_readiness_notes",
+              label: "Notas de release readiness",
+              items: report.releaseReadinessNotes ?? [],
+            },
+          ]}
+        />
+      )}
     </div>
   );
 }
