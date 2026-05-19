@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import Link from "next/link";
 
 import {
   workspaceNavigationTargets,
@@ -205,6 +206,20 @@ function SidebarNav({
               </div>
             </section>
           ))}
+          <section className="border-t border-white/10 pt-4">
+            <p className="text-[0.7rem] font-black uppercase tracking-[0.18em] text-slate-400">
+              QA
+            </p>
+            <div className="mt-2 grid gap-1">
+              <Link
+                href="/workspace/artifacts"
+                className="group flex items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-white/10 hover:bg-white/[0.06] focus:outline-none focus:ring-2 focus:ring-cyan-300"
+              >
+                <span className="size-1.5 rounded-full bg-cyan-300 opacity-70" />
+                Revisão de Artefatos
+              </Link>
+            </div>
+          </section>
         </nav>
 
         <div className="mt-auto grid gap-3 border-t border-white/10 pt-4">

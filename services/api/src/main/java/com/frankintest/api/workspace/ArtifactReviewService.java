@@ -19,7 +19,7 @@ public class ArtifactReviewService {
 
     private static final Set<String> IMMUTABLE_FIELDS = Set.of(
         "id", "organizationId", "projectId", "artifactType",
-        "aiAssisted", "sourceCheckupReportId", "sourceSection",
+        "aiAssisted", "sourceCheckupReportId", "sourceAiRunId", "sourceSection",
         "sourceItemIndex", "createdBy", "createdAt"
     );
 

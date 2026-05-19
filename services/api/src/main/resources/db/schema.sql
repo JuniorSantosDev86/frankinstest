@@ -156,6 +156,9 @@ CREATE INDEX IF NOT EXISTS idx_workspace_artifacts_type
 CREATE INDEX IF NOT EXISTS idx_workspace_artifacts_org_status_type
     ON workspace_artifacts(organization_id, status, artifact_type);
 
+-- Bloco 15: add source_ai_run_id for navigation back to originating checkup report
+ALTER TABLE workspace_artifacts ADD COLUMN IF NOT EXISTS source_ai_run_id VARCHAR(255) NULL;
+
 CREATE TABLE IF NOT EXISTS audit_log (
     id VARCHAR(120) PRIMARY KEY,
     organization_id VARCHAR(120) NOT NULL,

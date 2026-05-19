@@ -4,6 +4,10 @@ import { useParams, useRouter } from "next/navigation";
 import { useCheckupPolling } from "@/lib/checkup/useCheckupPolling";
 import type { FindingItem, ScenarioItem, TestCaseItem, ActionItem } from "@/lib/checkup/checkupTypes";
 import CheckupConversionPanel from "./CheckupConversionPanel";
+import CheckupArtifactsSection from "./CheckupArtifactsSection";
+import { getDevToken } from "@/lib/auth/getDevToken";
+
+const DEFAULT_ORG = process.env.NEXT_PUBLIC_DEFAULT_ORG_ID ?? 'org_demo_personal';
 
 const SEVERITY_COLORS: Record<string, string> = {
   LOW: "bg-green-100 text-green-700",
@@ -119,6 +123,7 @@ export default function CheckupRunPage() {
   const params = useParams();
   const router = useRouter();
   const aiRunId = typeof params.runId === "string" ? params.runId : null;
+  const token = getDevToken() ?? '';
   const { status, error, timedOut } = useCheckupPolling(aiRunId);
 
   // Loading state
@@ -193,6 +198,7 @@ export default function CheckupRunPage() {
       <ActionList items={report.recommendedNextActions} />
 
       {status.status === "completed" && (
+        <>
         <CheckupConversionPanel
           reportId={report.id}
           sections={[
@@ -228,6 +234,12 @@ export default function CheckupRunPage() {
             },
           ]}
         />
+        <CheckupArtifactsSection
+          reportId={report.id}
+          orgId={DEFAULT_ORG}
+          token={token}
+        />
+        </>
       )}
     </div>
   );

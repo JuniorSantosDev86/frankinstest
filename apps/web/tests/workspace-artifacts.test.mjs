@@ -158,10 +158,102 @@ test("WorkspaceArtifactDetailPanel.tsx — botões e labels em pt-BR", () => {
 
 test("WorkspaceArtifactDetailPanel.tsx — mudança de status disponível em no máximo 3 passos de UI", () => {
   const src = readFileSync("src/components/workspace/WorkspaceArtifactDetailPanel.tsx", "utf8");
-  // The status <select> and Save button must both be present in editing mode
-  // without requiring extra navigation (no modal, no page reload)
   assert.ok(src.includes("<select"), "deve ter um elemento <select> para status");
   assert.ok(src.includes("Salvar"), "deve ter botão Salvar no mesmo painel");
-  // Confirm no navigation away (no router.push, no Link to another page)
   assert.ok(!src.includes("router.push"), "não deve navegar para outra página ao salvar");
+});
+
+// ── T018/T022: US2 + US3 — traceability panel ────────────────────────────────
+
+test("WorkspaceArtifactDetailPanel.tsx — link 'Ver relatório de origem' usa sourceAiRunId na URL", () => {
+  const src = readFileSync("src/components/workspace/WorkspaceArtifactDetailPanel.tsx", "utf8");
+  assert.ok(
+    src.includes("/checkup/${artifact.sourceAiRunId}"),
+    "link deve usar sourceAiRunId, não sourceCheckupReportId"
+  );
+  assert.ok(
+    src.includes("Ver relatório de origem"),
+    "deve exibir texto 'Ver relatório de origem'"
+  );
+});
+
+test("WorkspaceArtifactDetailPanel.tsx — texto desabilitado quando sourceCheckupReportId presente mas sourceAiRunId nulo", () => {
+  const src = readFileSync("src/components/workspace/WorkspaceArtifactDetailPanel.tsx", "utf8");
+  assert.ok(
+    src.includes("Relatório de origem não disponível"),
+    "deve exibir 'Relatório de origem não disponível' como texto desabilitado"
+  );
+  assert.ok(
+    src.includes("aria-disabled"),
+    "elemento desabilitado deve ter aria-disabled"
+  );
+});
+
+test("WorkspaceArtifactDetailPanel.tsx — sem elemento de origem quando sourceCheckupReportId nulo", () => {
+  const src = readFileSync("src/components/workspace/WorkspaceArtifactDetailPanel.tsx", "utf8");
+  assert.ok(
+    src.includes("artifact.sourceCheckupReportId &&"),
+    "deve renderizar bloco de origem apenas quando sourceCheckupReportId presente"
+  );
+});
+
+test("WorkspaceArtifactDetailPanel.tsx — sourceAiRunId não exibido como campo bruto", () => {
+  const src = readFileSync("src/components/workspace/WorkspaceArtifactDetailPanel.tsx", "utf8");
+  assert.ok(
+    !src.includes('label="sourceAiRunId"'),
+    "sourceAiRunId não deve aparecer como ReadOnlyField visível"
+  );
+});
+
+test("WorkspaceArtifactDetailPanel.tsx — sourceSection com fallback pt-BR", () => {
+  const src = readFileSync("src/components/workspace/WorkspaceArtifactDetailPanel.tsx", "utf8");
+  assert.ok(
+    src.includes("Seção de origem não informada"),
+    "deve exibir 'Seção de origem não informada' quando sourceSection nulo/vazio"
+  );
+  assert.ok(
+    src.includes("Seção de origem"),
+    "label deve ser 'Seção de origem' em pt-BR"
+  );
+});
+
+test("WorkspaceArtifactDetailPanel.tsx — sourceItemIndex convertido para 1-based", () => {
+  const src = readFileSync("src/components/workspace/WorkspaceArtifactDetailPanel.tsx", "utf8");
+  assert.ok(
+    src.includes("sourceItemIndex + 1"),
+    "deve converter sourceItemIndex de 0-based para 1-based"
+  );
+  assert.ok(
+    src.includes("Item de origem #"),
+    "deve usar prefixo 'Item de origem #'"
+  );
+  assert.ok(
+    src.includes("sourceItemIndex != null"),
+    "deve verificar null antes de renderizar o campo de índice"
+  );
+});
+
+test("WorkspaceArtifactDetailPanel.tsx — badge 'Assistido por IA' presente", () => {
+  const src = readFileSync("src/components/workspace/WorkspaceArtifactDetailPanel.tsx", "utf8");
+  assert.ok(
+    src.includes("Assistido por IA"),
+    "badge 'Assistido por IA' deve estar presente"
+  );
+  assert.ok(
+    src.includes("aiAssisted"),
+    "badge deve ser condicional em artifact.aiAssisted"
+  );
+});
+
+test("WorkspaceArtifactDetailPanel.tsx — campos de rastreabilidade não têm input/textarea editável", () => {
+  const src = readFileSync("src/components/workspace/WorkspaceArtifactDetailPanel.tsx", "utf8");
+  // sourceAiRunId, sourceCheckupReportId, sourceSection, sourceItemIndex must not have editable inputs
+  assert.ok(
+    !src.includes('name="sourceAiRunId"'),
+    "sourceAiRunId não deve ter input editável"
+  );
+  assert.ok(
+    !src.includes('name="sourceCheckupReportId"'),
+    "sourceCheckupReportId não deve ter input editável"
+  );
 });

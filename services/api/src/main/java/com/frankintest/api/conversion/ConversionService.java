@@ -185,7 +185,7 @@ public class ConversionService {
                     data.artifactType().name(),
                     data.title(), data.description(),
                     "DRAFT", true,
-                    report.id(), section, index,
+                    report.id(), report.aiRunId(), section, index,
                     details, userId,
                     now, now
                 ));

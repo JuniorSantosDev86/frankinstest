@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import type { WorkspaceArtifact, ArtifactStatus } from '@/lib/artifacts/artifactTypes';
 import {
   ARTIFACT_TYPE_LABELS,
@@ -189,9 +190,40 @@ export default function WorkspaceArtifactDetailPanel({
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
           Rastreabilidade (somente leitura)
         </p>
-        <ReadOnlyField label="Relatório de origem" value={artifact.sourceCheckupReportId} />
-        <ReadOnlyField label="Seção" value={artifact.sourceSection} />
-        <ReadOnlyField label="Índice do item" value={String(artifact.sourceItemIndex)} />
+
+        {/* US2: 3-state origin report link */}
+        {artifact.sourceCheckupReportId && (
+          <div className="flex gap-2 text-xs">
+            <span className="text-gray-400 w-32 shrink-0">Relatório de origem</span>
+            {artifact.sourceAiRunId ? (
+              <Link
+                href={`/checkup/${artifact.sourceAiRunId}`}
+                className="text-blue-600 underline hover:text-blue-800 break-all"
+              >
+                Ver relatório de origem
+              </Link>
+            ) : (
+              <span aria-disabled="true" className="text-gray-400 cursor-not-allowed italic">
+                Relatório de origem não disponível
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* US3: friendly sourceSection */}
+        <ReadOnlyField
+          label="Seção de origem"
+          value={artifact.sourceSection?.trim() || 'Seção de origem não informada'}
+        />
+
+        {/* US3: 1-based sourceItemIndex — only render when not null */}
+        {artifact.sourceItemIndex != null && (
+          <ReadOnlyField
+            label="Posição no relatório"
+            value={`Item de origem #${artifact.sourceItemIndex + 1}`}
+          />
+        )}
+
         <ReadOnlyField label="Criado por" value={artifact.createdBy} />
         <ReadOnlyField
           label="Criado em"
@@ -206,11 +238,11 @@ export default function WorkspaceArtifactDetailPanel({
   );
 }
 
-function ReadOnlyField({ label, value }: { label: string; value: string }) {
+function ReadOnlyField({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div className="flex gap-2 text-xs">
       <span className="text-gray-400 w-32 shrink-0">{label}</span>
-      <span className="text-gray-600 break-all">{value}</span>
+      <span className="text-gray-600 break-all">{value ?? ''}</span>
     </div>
   );
 }

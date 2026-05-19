@@ -11,9 +11,10 @@ export interface WorkspaceArtifact {
   description: string | null;
   status: ArtifactStatus;
   aiAssisted: boolean;
-  sourceCheckupReportId: string;
-  sourceSection: string;
-  sourceItemIndex: number;
+  sourceCheckupReportId: string | null;
+  sourceAiRunId: string | null;
+  sourceSection: string | null;
+  sourceItemIndex: number | null;
   details: Record<string, unknown> | null;
   createdBy: string;
   createdAt: string;

@@ -275,7 +275,7 @@ class ArtifactReviewServiceTest {
             ART_ID, ORG, null, "REQUIREMENT",
             "Título original", "Descrição original",
             status, true,
-            "rpt_001", "missing_or_unclear_requirements", 0,
+            "rpt_001", "run_001", "missing_or_unclear_requirements", 0,
             "{\"severity\":\"HIGH\",\"originalText\":\"text\"}",
             USER, Instant.now(), Instant.now()
         );
@@ -286,7 +286,7 @@ class ArtifactReviewServiceTest {
             ART_ID, ORG, null, "REQUIREMENT",
             title, "Descrição original",
             "DRAFT", true,
-            "rpt_001", "missing_or_unclear_requirements", 0,
+            "rpt_001", "run_001", "missing_or_unclear_requirements", 0,
             "{\"severity\":\"HIGH\",\"originalText\":\"text\"}",
             USER, Instant.now(), Instant.now()
         );

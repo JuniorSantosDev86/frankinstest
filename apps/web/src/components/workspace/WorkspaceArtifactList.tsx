@@ -20,6 +20,7 @@ interface Props {
     status?: ArtifactStatus;
     sourceCheckupReportId?: string;
   }) => void;
+  onClearReportFilter?: () => void;
 }
 
 const STATUS_COLORS: Record<ArtifactStatus, string> = {
@@ -29,7 +30,7 @@ const STATUS_COLORS: Record<ArtifactStatus, string> = {
   ARCHIVED: 'bg-gray-100 text-gray-500',
 };
 
-export default function WorkspaceArtifactList({ data, onSelect, onFiltersChange }: Props) {
+export default function WorkspaceArtifactList({ data, onSelect, onFiltersChange, onClearReportFilter }: Props) {
   const [typeFilter, setTypeFilter] = useState<ArtifactType | ''>('');
   const [statusFilter, setStatusFilter] = useState<ArtifactStatus | ''>('');
   const [reportFilter, setReportFilter] = useState('');
@@ -59,6 +60,9 @@ export default function WorkspaceArtifactList({ data, onSelect, onFiltersChange 
   function handleReportChange(val: string) {
     setReportFilter(val);
     applyFilters(typeFilter, statusFilter, val);
+    if (!val.trim() && onClearReportFilter) {
+      onClearReportFilter();
+    }
   }
 
   return (

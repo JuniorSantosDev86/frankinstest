@@ -28,13 +28,13 @@ public class WorkspaceArtifactRepository {
             INSERT INTO workspace_artifacts (
                 id, organization_id, project_id, artifact_type,
                 title, description, status, ai_assisted,
-                source_checkup_report_id, source_section, source_item_index,
+                source_checkup_report_id, source_ai_run_id, source_section, source_item_index,
                 details, created_by, created_at, updated_at
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """,
             row.id(), row.organizationId(), row.projectId(), row.artifactType(),
             row.title(), row.description(), row.status(), row.aiAssisted(),
-            row.sourceCheckupReportId(), row.sourceSection(), row.sourceItemIndex(),
+            row.sourceCheckupReportId(), row.sourceAiRunId(), row.sourceSection(), row.sourceItemIndex(),
             row.details(), row.createdBy(),
             toTimestamp(row.createdAt() != null ? row.createdAt() : now),
             toTimestamp(row.updatedAt() != null ? row.updatedAt() : now)
@@ -48,7 +48,7 @@ public class WorkspaceArtifactRepository {
             """
             SELECT id, organization_id, project_id, artifact_type,
                    title, description, status, ai_assisted,
-                   source_checkup_report_id, source_section, source_item_index,
+                   source_checkup_report_id, source_ai_run_id, source_section, source_item_index,
                    details, created_by, created_at, updated_at
             FROM workspace_artifacts
             WHERE id = ? AND organization_id = ?
@@ -69,7 +69,7 @@ public class WorkspaceArtifactRepository {
         StringBuilder sql = new StringBuilder("""
             SELECT id, organization_id, project_id, artifact_type,
                    title, description, status, ai_assisted,
-                   source_checkup_report_id, source_section, source_item_index,
+                   source_checkup_report_id, source_ai_run_id, source_section, source_item_index,
                    details, created_by, created_at, updated_at
             FROM workspace_artifacts
             WHERE organization_id = ?
@@ -151,6 +151,8 @@ public class WorkspaceArtifactRepository {
     private ConversionModels.WorkspaceArtifactRow mapRow(ResultSet rs) throws SQLException {
         Timestamp createdAt = rs.getTimestamp("created_at");
         Timestamp updatedAt = rs.getTimestamp("updated_at");
+        int rawIndex = rs.getInt("source_item_index");
+        Integer sourceItemIndex = rs.wasNull() ? null : rawIndex;
         return new ConversionModels.WorkspaceArtifactRow(
             rs.getString("id"),
             rs.getString("organization_id"),
@@ -161,8 +163,9 @@ public class WorkspaceArtifactRepository {
             rs.getString("status"),
             rs.getBoolean("ai_assisted"),
             rs.getString("source_checkup_report_id"),
+            rs.getString("source_ai_run_id"),
             rs.getString("source_section"),
-            rs.getInt("source_item_index"),
+            sourceItemIndex,
             rs.getString("details"),
             rs.getString("created_by"),
             createdAt != null ? createdAt.toInstant() : null,
