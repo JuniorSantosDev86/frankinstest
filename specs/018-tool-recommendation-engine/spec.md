@@ -49,7 +49,7 @@ Quando o contexto do projeto indica riscos de performance ou cenários de carga,
 **Acceptance Scenarios**:
 
 1. **Given** o contexto do relatório indica riscos de performance, **When** o sistema gera recomendações, **Then** a categoria `PERFORMANCE` aparece com ferramenta recomendada (k6 ou JMeter), cenários sugeridos, métricas-alvo (latência p95, RPS, taxa de erro) e próximos passos em pt-BR.
-2. **Given** o relatório não apresenta sinais de risco de performance, **When** o sistema gera recomendações, **Then** a categoria `PERFORMANCE` pode ser omitida ou marcada como baixa prioridade com justificativa.
+2. **Given** o relatório não apresenta sinais de risco de performance, **When** o sistema gera recomendações, **Then** a categoria `PERFORMANCE` está ausente — o endpoint retorna 200 com `categories` vazia.
 3. **Given** a recomendação de performance é gerada, **When** o usuário revisa, **Then** cada próximo passo é acionável: instalar k6/JMeter, criar script base, definir cenário de carga, estabelecer threshold de aprovação/reprovação.
 
 ---
@@ -73,7 +73,7 @@ O frontend exibe as recomendações geradas como uma **seção adicional na pág
 
 ### Edge Cases
 
-- O que acontece se o contexto do relatório não for suficiente para recomendar nenhuma ferramenta? → O sistema retorna recomendações genéricas para o `targetType` do relatório com justificativa explícita de baixa confiança.
+- O que acontece se o contexto do relatório não for suficiente para recomendar nenhuma ferramenta? → O endpoint retorna 200 com `categories` vazia. Neste bloco só existe a categoria `PERFORMANCE`; sem keywords de performance detectadas, não há categoria a recomendar. Recomendações para outros tipos de risco são escopo pós-MVP.
 - O que acontece se o usuário tentar gerar recomendações para um relatório ainda em processamento (`status != DRAFT` completo)? → O backend verifica o status; relatórios não concluídos retornam 422 com mensagem em pt-BR.
 - O que acontece se o usuário gerar recomendações múltiplas vezes para o mesmo relatório? → Cada geração retorna um novo resultado computado; não há persistência automática (salvar é ação explícita do usuário).
 
@@ -103,7 +103,7 @@ O frontend exibe as recomendações geradas como uma **seção adicional na pág
 ## Success Criteria *(mandatory)*
 
 - **SC-001**: Dado um relatório de Check-up com riscos de qualidade, o endpoint retorna `ToolRecommendationResult` com ao menos uma categoria em < 300ms (cálculo determinístico, sem AI).
-- **SC-002**: A categoria PERFORMANCE está presente quando o relatório contém riscos de performance ou cenários de carga e ausente (ou marcada como baixa prioridade) quando não estão presentes.
+- **SC-002**: A categoria PERFORMANCE está presente quando o relatório contém riscos de performance ou cenários de carga; `categories` retorna vazia quando não há nenhuma categoria recomendável no MVP.
 - **SC-003**: Artefato salvo via `/save` aparece na listagem de artefatos do Workspace com tipo `QA_ACTION`.
 - **SC-004**: 401/403/404 corretos em 100% dos cenários de auth/org/relatório inexistente.
 - **SC-005**: Zero chamadas a AI provider — verificado por grep no código novo.

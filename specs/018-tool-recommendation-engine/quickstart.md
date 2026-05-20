@@ -17,14 +17,9 @@
 ## 1. Subir o ambiente
 
 ```bash
-cd infra
-docker compose up -d
-
-cd ../services/api
-./mvnw spring-boot:run
-
-cd ../apps/web
-npm run dev
+(cd infra && docker compose up -d)
+(cd services/api && ./mvnw spring-boot:run &)
+(cd apps/web && npm run dev)
 ```
 
 ---
@@ -85,8 +80,7 @@ curl -s \
 ## 6. Executar testes backend
 
 ```bash
-cd services/api
-./mvnw test -pl . -Dtest="ToolRecommendation*"
+(cd services/api && ./mvnw test -pl . -Dtest="ToolRecommendation*")
 ```
 
 ---

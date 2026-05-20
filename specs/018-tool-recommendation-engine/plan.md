@@ -69,7 +69,7 @@ specs/018-tool-recommendation-engine/
 ```text
 services/api/src/main/java/com/frankintest/api/
 └── toolrecommendation/                         ← módulo novo
-    ├── ToolRecommendationController.java       ← endpoints POST /generate e /save
+    ├── ToolRecommendationController.java       ← endpoints POST /{reportId} e POST /{reportId}/save
     ├── ToolRecommendationService.java          ← orquestra engine + repository
     ├── ToolRecommendationEngine.java           ← lógica determinística k6/JMeter
     └── ToolRecommendationModels.java           ← DTOs e enums
@@ -84,7 +84,7 @@ apps/web/src/
 │   ├── page.tsx                                ← adicionar <ToolRecommendationPanel>
 │   └── ToolRecommendationPanel.tsx             ← componente novo
 └── lib/toolrecommendations/
-    ├── toolRecommendationsApi.ts               ← fetch para /generate e /save
+    ├── toolRecommendationsApi.ts               ← fetch para POST /{reportId} e POST /{reportId}/save
     └── toolRecommendationsTypes.ts             ← tipos TypeScript
 ```
 
@@ -112,7 +112,7 @@ O endpoint `/save` chama o engine novamente com os dados do banco — não armaz
 
 ### AD-05: Painel de UI sem nova rota
 
-`ToolRecommendationPanel` é adicionado à `page.tsx` existente do relatório — após `DriftSummaryPanel`. Estado local: `idle | loading | loaded | error`. O botão "Gerar recomendações" aciona `POST /generate`; o botão "Salvar como artefato" aciona `POST /save`.
+`ToolRecommendationPanel` é adicionado à `page.tsx` existente do relatório — após `DriftSummaryPanel`. Estado local: `idle | loading | loaded | error`. O botão "Gerar recomendações" aciona `POST /api/tool-recommendations/{reportId}`; o botão "Salvar como artefato" aciona `POST /api/tool-recommendations/{reportId}/save`.
 
 ---
 
@@ -148,7 +148,7 @@ Ver [contracts/api-contracts.md](contracts/api-contracts.md) para detalhes compl
 |---------|-------------|
 | Relatório com `qualityRisks` contendo "performance" | Categoria PERFORMANCE presente; k6 = PRIMARY |
 | Relatório com keywords enterprise ("jmeter", "java", "legado") | JMeter = PRIMARY, k6 = SECONDARY |
-| Relatório sem sinais de performance | Categoria PERFORMANCE ausente ou prioridade baixa |
+| Relatório sem sinais de performance | `categories` vazia — PERFORMANCE ausente |
 | `targetType = URL` sem keywords | k6 = PRIMARY como default |
 | Keywords case-insensitive ("PERFORMANCE", "Latência") | Detecção funciona corretamente |
 | `qualityRisks` vazia + `suggestedTestScenarios` com keywords | Categoria presente (ambos campos inspecionados) |
@@ -157,15 +157,15 @@ Ver [contracts/api-contracts.md](contracts/api-contracts.md) para detalhes compl
 
 | Cenário | Verificação |
 |---------|-------------|
-| POST `/generate` com relatório válido da org | 200 + categories não vazias |
-| POST `/generate` sem JWT | 401 |
-| POST `/generate` sem `X-Organization-Id` | 403 |
-| POST `/generate` com relatório de outra org | 404 |
-| POST `/generate` com reportId inexistente | 404 |
-| POST `/save` com relatório válido | 201 + artefato `QA_ACTION` no banco com `details` não nulo |
-| POST `/save` duas vezes para o mesmo relatório | 2 artefatos distintos no banco (sem sobrescrita) |
-| POST `/save` sem JWT | 401 |
-| Verificação de ausência de chamadas a AI provider | grep no código confirma SC-005 |
+| `POST /api/tool-recommendations/{reportId}` com relatório válido da org | 200 + categories não vazias |
+| `POST /api/tool-recommendations/{reportId}` sem JWT | 401 |
+| `POST /api/tool-recommendations/{reportId}` sem `X-Organization-Id` | 403 |
+| `POST /api/tool-recommendations/{reportId}` com relatório de outra org | 404 |
+| `POST /api/tool-recommendations/{reportId}` com reportId inexistente | 404 |
+| `POST /api/tool-recommendations/{reportId}/save` com relatório válido | 201 + artefato `QA_ACTION` no banco com `details` não nulo |
+| `POST /api/tool-recommendations/{reportId}/save` duas vezes para o mesmo relatório | 2 artefatos distintos no banco (sem sobrescrita) |
+| `POST /api/tool-recommendations/{reportId}/save` sem JWT | 401 |
+| Verificação de ausência de chamadas a AI provider | grep no código confirma SC-005 (ver T-15) |
 
 ---
 
