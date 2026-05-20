@@ -118,6 +118,57 @@ public class CheckupController {
         }
     }
 
+    // ── Bloco 16: history list & command center ───────────────────────────────
+    // NOTE: /runs/summary and /runs MUST be registered before /runs/{aiRunId}
+    // to avoid Spring treating "summary" or an empty path segment as a path variable.
+
+    @GetMapping("/runs/summary")
+    public ResponseEntity<?> getRunsSummary(
+            @AuthenticationPrincipal AuthenticatedPrincipal principal,
+            @RequestHeader(value = "X-Organization-Id", required = false) String organizationId) {
+        try {
+            workspaceAccessService.requireOrgAccess(principal, organizationId);
+            return ResponseEntity.ok(checkupService.getRunsSummary(organizationId));
+        } catch (WorkspaceAccessService.MissingOrgHeaderException e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", "VALIDATION_ERROR",
+                "message", e.getMessage(),
+                "field", "X-Organization-Id"
+            ));
+        } catch (WorkspaceAccessService.AccessDeniedException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                "error", "FORBIDDEN",
+                "message", e.getMessage()
+            ));
+        }
+    }
+
+    @GetMapping("/runs")
+    public ResponseEntity<?> listRuns(
+            @AuthenticationPrincipal AuthenticatedPrincipal principal,
+            @RequestHeader(value = "X-Organization-Id", required = false) String organizationId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            workspaceAccessService.requireOrgAccess(principal, organizationId);
+            int clampedSize = Math.min(Math.max(size, 1), 50);
+            return ResponseEntity.ok(checkupService.listRuns(organizationId, page, clampedSize));
+        } catch (WorkspaceAccessService.MissingOrgHeaderException e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", "VALIDATION_ERROR",
+                "message", e.getMessage(),
+                "field", "X-Organization-Id"
+            ));
+        } catch (WorkspaceAccessService.AccessDeniedException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                "error", "FORBIDDEN",
+                "message", e.getMessage()
+            ));
+        }
+    }
+
+    // ── end Bloco 16 ──────────────────────────────────────────────────────────
+
     @GetMapping("/runs/{aiRunId}")
     public ResponseEntity<?> getRunStatus(
             @PathVariable String aiRunId,

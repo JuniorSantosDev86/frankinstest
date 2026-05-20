@@ -150,4 +150,39 @@ public class CheckupModels {
             this.field = field;
         }
     }
+
+    // ── Bloco 16: history & command center ────────────────────────────────────
+
+    public record CheckupRunListItem(
+        String aiRunId,
+        String reportId,
+        String status,
+        String targetType,
+        String targetValue,
+        String depth,
+        long estimatedCredits,
+        long consumedCredits,
+        long artifactCount,
+        java.time.Instant createdAt,
+        java.time.Instant completedAt
+    ) {}
+
+    public record CheckupRunsPage(
+        java.util.List<CheckupRunListItem> content,
+        long totalElements,
+        int totalPages,
+        int page,
+        int size
+    ) {}
+
+    public record CheckupRunsSummary(
+        long totalRuns,
+        long completedRuns,
+        long runningRuns,
+        long failedRuns,
+        long totalConsumedCredits,
+        long totalArtifacts
+    ) {}
+
+    // ── end Bloco 16 ──────────────────────────────────────────────────────────
 }

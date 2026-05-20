@@ -102,3 +102,36 @@ export interface CheckupRunStatusResponse {
   report: CheckupReportView | null
   errorMessage?: string
 }
+
+// ── Bloco 16: history & command center ────────────────────────────────────
+
+export interface CheckupRunListItem {
+  aiRunId: string
+  reportId: string | null
+  status: 'running' | 'completed' | 'failed'
+  targetType: string | null
+  targetValue: string | null
+  depth: 'QUICK' | 'STANDARD' | 'DEEP' | null
+  estimatedCredits: number
+  consumedCredits: number
+  artifactCount: number
+  createdAt: string
+  completedAt: string | null
+}
+
+export interface CheckupRunsPage {
+  content: CheckupRunListItem[]
+  totalElements: number
+  totalPages: number
+  page: number
+  size: number
+}
+
+export interface CheckupRunsSummary {
+  totalRuns: number
+  completedRuns: number
+  runningRuns: number
+  failedRuns: number
+  totalConsumedCredits: number
+  totalArtifacts: number
+}

@@ -7,11 +7,14 @@ import com.frankintest.api.ai.provider.AiProviderSelector;
 import com.frankintest.api.airuns.AiRunModels;
 import com.frankintest.api.airuns.AiRunRepository;
 import com.frankintest.api.audit.AuditService;
+import com.frankintest.api.conversion.WorkspaceArtifactRepository;
 import com.frankintest.api.credits.CreditModels;
 import com.frankintest.api.credits.CreditService;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -25,10 +28,12 @@ public class CheckupService {
     private final CheckupOutputValidator outputValidator;
     private final CheckupRepository checkupRepository;
     private final AiRunRepository aiRunRepository;
+    private final WorkspaceArtifactRepository workspaceArtifactRepository;
     private final CreditService creditService;
     private final AuditService auditService;
     private final AiProviderSelector aiProviderSelector;
     private final ObjectMapper objectMapper;
+    private final JdbcTemplate jdbc;
 
     public CheckupService(
         CheckupCreditEstimator creditEstimator,
@@ -37,10 +42,12 @@ public class CheckupService {
         CheckupOutputValidator outputValidator,
         CheckupRepository checkupRepository,
         AiRunRepository aiRunRepository,
+        WorkspaceArtifactRepository workspaceArtifactRepository,
         CreditService creditService,
         AuditService auditService,
         AiProviderSelector aiProviderSelector,
-        ObjectMapper objectMapper
+        ObjectMapper objectMapper,
+        JdbcTemplate jdbc
     ) {
         this.creditEstimator = creditEstimator;
         this.promptBuilder = promptBuilder;
@@ -48,10 +55,12 @@ public class CheckupService {
         this.outputValidator = outputValidator;
         this.checkupRepository = checkupRepository;
         this.aiRunRepository = aiRunRepository;
+        this.workspaceArtifactRepository = workspaceArtifactRepository;
         this.creditService = creditService;
         this.auditService = auditService;
         this.aiProviderSelector = aiProviderSelector;
         this.objectMapper = objectMapper;
+        this.jdbc = jdbc;
     }
 
     public CheckupModels.CheckupEstimateResponse estimate(CheckupModels.CheckupRequest request) {
@@ -186,6 +195,122 @@ public class CheckupService {
             default -> new CheckupModels.CheckupRunStatusResponse(aiRunId, "running", 0L, null, null);
         };
     }
+
+    // ── Bloco 16: history & command center ────────────────────────────────────
+
+    public CheckupModels.CheckupRunsPage listRuns(String organizationId, int page, int size) {
+        int clampedSize = Math.min(size, 50);
+        int offset = page * clampedSize;
+
+        long total = aiRunRepository.countByOrganizationAndFeature(organizationId, "checkup");
+        int totalPages = clampedSize > 0 ? (int) Math.ceil((double) total / clampedSize) : 0;
+
+        List<AiRunModels.AiRun> runs = aiRunRepository.findByOrganizationAndFeature(
+            organizationId, "checkup", offset, clampedSize);
+
+        List<CheckupModels.CheckupRunListItem> items = new ArrayList<>();
+        for (AiRunModels.AiRun run : runs) {
+            String reportId = resolveReportId(run);
+            String targetType = null;
+            String targetValue = null;
+            String depth = null;
+            if (reportId != null) {
+                Optional<CheckupModels.CheckupReport> reportOpt = checkupRepository.findByAiRunId(run.id());
+                if (reportOpt.isPresent()) {
+                    CheckupModels.CheckupReport r = reportOpt.get();
+                    targetType = r.targetType() != null ? r.targetType().name() : null;
+                    targetValue = r.targetValue();
+                    depth = r.depth() != null ? r.depth().name() : null;
+                }
+            }
+            long artifactCount = workspaceArtifactRepository.countBySourceAiRunId(organizationId, run.id());
+            items.add(new CheckupModels.CheckupRunListItem(
+                run.id(),
+                reportId,
+                mapStatus(run.status()),
+                targetType,
+                targetValue,
+                depth,
+                run.estimatedCredits(),
+                run.consumedCredits(),
+                artifactCount,
+                run.createdAt(),
+                run.completedAt()
+            ));
+        }
+
+        return new CheckupModels.CheckupRunsPage(items, total, totalPages, page, clampedSize);
+    }
+
+    public CheckupModels.CheckupRunsSummary getRunsSummary(String organizationId) {
+        // Single aggregating query for counts and sum
+        CheckupModels.CheckupRunsSummary summaryBase = jdbc.queryForObject(
+            """
+            SELECT
+              COUNT(*) AS total_runs,
+              COUNT(*) FILTER (WHERE status = 'completed') AS completed_runs,
+              COUNT(*) FILTER (WHERE status IN ('estimated','reserved','running')) AS running_runs,
+              COUNT(*) FILTER (WHERE status IN ('failed','cancelled')) AS failed_runs,
+              COALESCE(SUM(consumed_credits), 0) AS total_consumed_credits
+            FROM ai_runs
+            WHERE organization_id = ? AND feature = 'checkup'
+            """,
+            (rs, n) -> new CheckupModels.CheckupRunsSummary(
+                rs.getLong("total_runs"),
+                rs.getLong("completed_runs"),
+                rs.getLong("running_runs"),
+                rs.getLong("failed_runs"),
+                rs.getLong("total_consumed_credits"),
+                0L
+            ),
+            organizationId
+        );
+
+        if (summaryBase == null) {
+            return new CheckupModels.CheckupRunsSummary(0L, 0L, 0L, 0L, 0L, 0L);
+        }
+
+        // Subquery for totalArtifacts
+        Long totalArtifacts = jdbc.queryForObject(
+            """
+            SELECT COUNT(*) FROM workspace_artifacts
+            WHERE organization_id = ?
+              AND source_ai_run_id IN (
+                SELECT id FROM ai_runs WHERE organization_id = ? AND feature = 'checkup'
+              )
+            """,
+            Long.class,
+            organizationId, organizationId
+        );
+
+        return new CheckupModels.CheckupRunsSummary(
+            summaryBase.totalRuns(),
+            summaryBase.completedRuns(),
+            summaryBase.runningRuns(),
+            summaryBase.failedRuns(),
+            summaryBase.totalConsumedCredits(),
+            totalArtifacts != null ? totalArtifacts : 0L
+        );
+    }
+
+    private String mapStatus(AiRunModels.AiRunStatus status) {
+        return switch (status) {
+            case completed -> "completed";
+            case failed, cancelled -> "failed";
+            default -> "running";
+        };
+    }
+
+    private String resolveReportId(AiRunModels.AiRun run) {
+        if (run.status() == AiRunModels.AiRunStatus.completed
+                && run.outputArtifactIds() != null
+                && !run.outputArtifactIds().isEmpty()) {
+            return run.outputArtifactIds().get(0);
+        }
+        return null;
+    }
+
+    // ── end Bloco 16 ──────────────────────────────────────────────────────────
 
     private void audit(String orgId, String userId, String eventType, String entityType, String entityId) {
         auditService.record(AuditService.AuditEvent.of(orgId, userId, eventType, entityType, entityId, null));

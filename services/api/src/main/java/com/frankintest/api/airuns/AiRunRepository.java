@@ -71,6 +71,33 @@ public class AiRunRepository {
             reservedCredits, id);
     }
 
+    // ── Bloco 16: history list queries ────────────────────────────────────────
+
+    public List<AiRunModels.AiRun> findByOrganizationAndFeature(
+            String organizationId, String feature, int offset, int limit) {
+        return jdbc.query(
+            """
+            SELECT * FROM ai_runs
+            WHERE organization_id = ? AND feature = ?
+            ORDER BY created_at DESC
+            LIMIT ? OFFSET ?
+            """,
+            (rs, rowNum) -> mapRow(rs),
+            organizationId, feature, limit, offset
+        );
+    }
+
+    public long countByOrganizationAndFeature(String organizationId, String feature) {
+        Long count = jdbc.queryForObject(
+            "SELECT COUNT(*) FROM ai_runs WHERE organization_id = ? AND feature = ?",
+            Long.class,
+            organizationId, feature
+        );
+        return count != null ? count : 0L;
+    }
+
+    // ── end Bloco 16 ──────────────────────────────────────────────────────────
+
     public Optional<AiRunModels.AiRun> findById(String id) {
         List<AiRunModels.AiRun> results = jdbc.query(
             "SELECT * FROM ai_runs WHERE id = ?",

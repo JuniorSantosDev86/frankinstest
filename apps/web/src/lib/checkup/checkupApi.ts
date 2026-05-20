@@ -3,6 +3,8 @@ import type {
   CheckupRequest,
   CheckupRunResponse,
   CheckupRunStatusResponse,
+  CheckupRunsPage,
+  CheckupRunsSummary,
 } from './checkupTypes'
 import { getDevToken } from '@/lib/auth/getDevToken'
 import { getMockSession } from '@/lib/auth/mockSession'
@@ -62,6 +64,39 @@ export async function getCheckupRun(
   }
   return res.json()
 }
+
+// ── Bloco 16: history & command center ────────────────────────────────────
+
+// _orgId is part of the API contract; the actual org is sent via buildAuthHeaders()
+export async function listCheckupRuns(
+  _orgId: string,
+  page = 0,
+  size = 20
+): Promise<CheckupRunsPage> {
+  const clampedSize = Math.min(Math.max(size, 1), 50)
+  const url = `${BASE}/runs?page=${page}&size=${clampedSize}`
+  const res = await fetch(url, {
+    headers: buildAuthHeaders(),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new ApiError(res.status, err.message ?? 'Erro ao carregar histórico de Check-ups.')
+  }
+  return res.json()
+}
+
+export async function getCheckupRunsSummary(): Promise<CheckupRunsSummary> {
+  const res = await fetch(`${BASE}/runs/summary`, {
+    headers: buildAuthHeaders(),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new ApiError(res.status, err.message ?? 'Erro ao carregar resumo do Command Center.')
+  }
+  return res.json()
+}
+
+// ── end Bloco 16 ──────────────────────────────────────────────────────────
 
 export class ApiError extends Error {
   constructor(

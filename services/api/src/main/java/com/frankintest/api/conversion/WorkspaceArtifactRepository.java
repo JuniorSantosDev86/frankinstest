@@ -175,6 +175,19 @@ public class WorkspaceArtifactRepository {
 
     // ── end Bloco 14 methods ───────────────────────────────────────────────────
 
+    // ── Bloco 16: artifact count per ai_run ───────────────────────────────────
+
+    public long countBySourceAiRunId(String organizationId, String sourceAiRunId) {
+        Long count = jdbc.queryForObject(
+            "SELECT COUNT(*) FROM workspace_artifacts WHERE source_ai_run_id = ? AND organization_id = ?",
+            Long.class,
+            sourceAiRunId, organizationId
+        );
+        return count != null ? count : 0L;
+    }
+
+    // ── end Bloco 16 ──────────────────────────────────────────────────────────
+
     public Optional<String> findBySource(String reportId, String section, int itemIndex) {
         List<String> ids = jdbc.query(
             """
