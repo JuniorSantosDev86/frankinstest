@@ -183,5 +183,5 @@ Ao final de cada bloco, reportar:
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at `specs/016-checkup-history-command-center/plan.md`.
+at `specs/017-frankindrift-drift-foundation/plan.md`.
 <!-- SPECKIT END -->

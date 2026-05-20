@@ -1,11 +1,15 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useCheckupPolling } from "@/lib/checkup/useCheckupPolling";
 import type { FindingItem, ScenarioItem, TestCaseItem, ActionItem } from "@/lib/checkup/checkupTypes";
 import CheckupConversionPanel from "./CheckupConversionPanel";
 import CheckupArtifactsSection from "./CheckupArtifactsSection";
 import { getDevToken } from "@/lib/auth/getDevToken";
+import { getDriftSummary } from "@/lib/drift/driftApi";
+import type { DriftSummary } from "@/lib/drift/driftTypes";
+import DriftSummaryPanel from "@/components/drift/DriftSummaryPanel";
 
 const DEFAULT_ORG = process.env.NEXT_PUBLIC_DEFAULT_ORG_ID ?? 'org_demo_personal';
 
@@ -124,7 +128,25 @@ export default function CheckupRunPage() {
   const router = useRouter();
   const aiRunId = typeof params.runId === "string" ? params.runId : null;
   const token = getDevToken() ?? '';
+  const orgId = process.env.NEXT_PUBLIC_DEFAULT_ORG_ID ?? 'org_demo_personal';
   const { status, error, timedOut } = useCheckupPolling(aiRunId);
+
+  const [driftSummary, setDriftSummary] = useState<DriftSummary | null>(null);
+  const [driftLoading, setDriftLoading] = useState(false);
+  const [driftError, setDriftError] = useState(false);
+
+  const reportId = status?.report?.id ?? null;
+
+  useEffect(() => {
+    if (!reportId) return;
+    let cancelled = false;
+    Promise.resolve()
+      .then(() => { if (!cancelled) { setDriftLoading(true); setDriftSummary(null); setDriftError(false); } })
+      .then(() => getDriftSummary(reportId, token, orgId))
+      .then(result => { if (!cancelled) { setDriftSummary(result); setDriftLoading(false); } })
+      .catch(() => { if (!cancelled) { setDriftError(true); setDriftLoading(false); } });
+    return () => { cancelled = true; };
+  }, [reportId, token, orgId]);
 
   // Loading state
   if (!status || status.status === "running" || status.status === "reserved") {
@@ -196,6 +218,18 @@ export default function CheckupRunPage() {
       <FindingList title="Riscos de UX e produto" items={report.uxProductRisks} />
       <FindingList title="Notas de release readiness" items={report.releaseReadinessNotes} />
       <ActionList items={report.recommendedNextActions} />
+
+      {/* Drift summary — non-blocking; shown only when report is loaded */}
+      {reportId && (
+        <div className="border border-gray-200 rounded-md p-4 mb-4">
+          <h2 className="text-sm font-semibold text-gray-700 mb-2">Resumo de Drift</h2>
+          <DriftSummaryPanel
+            driftSummary={driftSummary}
+            loading={driftLoading}
+            error={driftError}
+          />
+        </div>
+      )}
 
       {status.status === "completed" && (
         <>

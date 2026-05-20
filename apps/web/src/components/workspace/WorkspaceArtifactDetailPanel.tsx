@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import type { WorkspaceArtifact, ArtifactStatus } from '@/lib/artifacts/artifactTypes';
 import {
@@ -8,6 +8,9 @@ import {
   ARTIFACT_STATUS_LABELS,
 } from '@/lib/artifacts/artifactTypes';
 import { updateArtifact } from '@/lib/artifacts/artifactsApi';
+import { getArtifactDrift } from '@/lib/drift/driftApi';
+import type { DriftResult } from '@/lib/drift/driftTypes';
+import DriftIndicator from '@/components/drift/DriftIndicator';
 
 interface Props {
   artifact: WorkspaceArtifact;
@@ -37,6 +40,21 @@ export default function WorkspaceArtifactDetailPanel({
   const [status, setStatus] = useState<ArtifactStatus>(artifact.status as ArtifactStatus);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [driftResult, setDriftResult] = useState<DriftResult | null>(null);
+  const [driftLoading, setDriftLoading] = useState(false);
+  const [driftError, setDriftError] = useState(false);
+
+  useEffect(() => {
+    if (!artifact.sourceCheckupReportId) return;
+    let cancelled = false;
+    Promise.resolve()
+      .then(() => { if (!cancelled) { setDriftLoading(true); setDriftResult(null); setDriftError(false); } })
+      .then(() => getArtifactDrift(artifact.id, token, orgId))
+      .then(result => { if (!cancelled) { setDriftResult(result); setDriftLoading(false); } })
+      .catch(() => { if (!cancelled) { setDriftError(true); setDriftLoading(false); } });
+    return () => { cancelled = true; };
+  }, [artifact.id, artifact.sourceCheckupReportId, token, orgId]);
 
   async function handleSave() {
     if (!title.trim()) {
@@ -184,6 +202,20 @@ export default function WorkspaceArtifactDetailPanel({
           </button>
         )}
       </div>
+
+      {/* Drift indicator — non-blocking, only for Check-up-derived artifacts */}
+      {artifact.sourceCheckupReportId && (
+        <div className="border-t border-gray-100 pt-3">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
+            Drift
+          </p>
+          <DriftIndicator
+            driftResult={driftResult}
+            loading={driftLoading}
+            error={driftError}
+          />
+        </div>
+      )}
 
       {/* Read-only traceability fields */}
       <div className="mt-auto border-t border-gray-100 pt-4 flex flex-col gap-2">
