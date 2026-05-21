@@ -10,6 +10,7 @@ import { getDevToken } from "@/lib/auth/getDevToken";
 import { getDriftSummary } from "@/lib/drift/driftApi";
 import type { DriftSummary } from "@/lib/drift/driftTypes";
 import DriftSummaryPanel from "@/components/drift/DriftSummaryPanel";
+import ToolRecommendationPanel from "./ToolRecommendationPanel";
 
 const DEFAULT_ORG = process.env.NEXT_PUBLIC_DEFAULT_ORG_ID ?? 'org_demo_personal';
 
@@ -230,6 +231,8 @@ export default function CheckupRunPage() {
           />
         </div>
       )}
+
+      {reportId && <ToolRecommendationPanel reportId={reportId} />}
 
       {status.status === "completed" && (
         <>
